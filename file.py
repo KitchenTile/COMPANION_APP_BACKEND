@@ -1,7 +1,11 @@
 from openai import OpenAI
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+import os
 import requests
 import json
+
+load_dotenv()
 
 
 client = OpenAI()
@@ -116,18 +120,27 @@ def get_base_conversion(number:int, target_base: int, starting_base: int|None=10
 
 #tool def
 def user_interaction(query: str):
-    return query
+    print(f'AI asks: {query}')
+    user_input = input("answer: ")
+    return user_input
 
 
 tool_dict = {
     "get_horoscope": get_horoscope,
-    "get_base_conversion": get_base_conversion
+    "get_base_conversion": get_base_conversion,
+    "user_interaction": user_interaction
 }
 
 #array of messages to give the model context
 messages=[
-    {"role": "system", "content": "You're an asistant in charge of interpreting and fulfilling a request"},
-    {"role": "user", "content": "I'm a Cancer, please summarize my horoscope for 'today' and also my 'weekly'. Can you also convert the number 10 from base 10 to base 2"},
+    {"role": "system", "content": (
+            "You are an assistant. "
+            "If you need more information or confirmation from the user, "
+            "you MUST use the 'user_interaction' tool. "
+            "DO NOT ask questions in the final response content. "
+            "Only output natural language when the task is fully complete."
+        )},
+    {"role": "user", "content": "Change the base of the number 4 from a starting base 5 please"},
 ]
     
 #orchestrator loop to avoid countless conditional statements

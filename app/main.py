@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import supabase
+# import supabase
 import datetime
+import uvicorn
+
 
 app = FastAPI()
 
@@ -40,3 +42,9 @@ async def create_chat(userQuery: ChatMessage):
         print(e)
         raise HTTPException(status_code=500, detail="Internal server error")
     
+def start_server(host: str = "127.0.0.1", port: int = 8000, reload: bool = True):
+    uvicorn.run("main:app", host=host, port=port, reload=reload)
+    
+
+if __name__ == "__main__":
+    start_server()
