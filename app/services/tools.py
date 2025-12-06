@@ -1,8 +1,57 @@
 import requests
 
 
+
+#tool def
+def get_horoscope(sign: str, day: str):
+    headers = {
+        'accept': 'application/json'
+    }
+    try:
+        if day == "today" or day == "tomorrow" or day == "yesterday":
+            response = requests.get(f"https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign={sign}&day={day}", headers=headers)
+        else:
+            response = requests.get(f"https://horoscope-app-api.vercel.app/api/v1/get-horoscope/{day}?sign={sign}", headers=headers)
+
+
+        response.raise_for_status() 
+        data = response.json()
+        return data['data']
+
+    except requests.exceptions.RequestException as e:
+        return f"An error occurred: {e}"
+
+#tool def
+def get_base_conversion(number:int, target_base: int, starting_base: int|None=10):
+    headers = {
+        'accept': 'application/json'
+    }
+    try:
+        response = requests.get(f"https://api.math.tools/numbers/base?number={number}&from={starting_base}&to={target_base}", headers=headers)
+
+        response.raise_for_status()
+        data = response.json()
+        
+        return data['contents'];
+
+    except requests.exceptions.RequestException as e:
+        return f"An error occurred: {e}"
+
+#tool def
+def user_interaction(query: str):
+    print(f'AI asks: {query}')
+    user_input = input("answer: ")
+    return user_input
+
+
+tool_dict = {
+    "get_horoscope": get_horoscope,
+    "get_base_conversion": get_base_conversion,
+    "user_interaction": user_interaction
+}
+
 #tools available for the model
-tools = [
+tool_definitions = [
     {
         "type": "function",
         "function":{
@@ -73,43 +122,3 @@ tools = [
         }
     },
 ]
-
-#tool def
-def get_horoscope(sign: str, day: str):
-    headers = {
-        'accept': 'application/json'
-    }
-    try:
-        if day == "today" or day == "tomorrow" or day == "yesterday":
-            response = requests.get(f"https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign={sign}&day={day}", headers=headers)
-        else:
-            response = requests.get(f"https://horoscope-app-api.vercel.app/api/v1/get-horoscope/{day}?sign={sign}", headers=headers)
-
-
-        response.raise_for_status() 
-        data = response.json()
-        return data['data']
-
-    except requests.exceptions.RequestException as e:
-        return f"An error occurred: {e}"
-
-#tool def
-def get_base_conversion(number:int, target_base: int, starting_base: int|None=10):
-    headers = {
-        'accept': 'application/json'
-    }
-    try:
-        response = requests.get(f"https://api.math.tools/numbers/base?number={number}&from={starting_base}&to={target_base}", headers=headers)
-
-        response.raise_for_status()
-        data = response.json()
-        
-        return data['contents'];
-
-    except requests.exceptions.RequestException as e:
-        return f"An error occurred: {e}"
-
-#tool def
-def user_interaction(query: str):
-    return query
-
