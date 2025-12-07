@@ -1,6 +1,7 @@
 import os
 from supabase import Client, create_client
 from datetime import datetime, timezone
+from services.prompts.prompts import prompt_dict
 
 class ConversationManager:
     def __init__(self, chat_id:str, user_id: str):
@@ -14,7 +15,7 @@ class ConversationManager:
 
         self.messages = self._load_message_history()
 
-    # get user messages from database
+    # get conversation messages from database
     def _load_message_history(self):
         try:
             response = (
@@ -26,7 +27,7 @@ class ConversationManager:
             return []
         
     # add message to database
-    def add_message(self, message: str, role: str):
+    def add_message(self, message: str, role: str) -> None:
         try:
             date = datetime.now(timezone.utc).isoformat()
             new_msg_obj = {"role": role, "content": message, "timestamp": date}
@@ -38,7 +39,7 @@ class ConversationManager:
                 # Define System Prompt
                 system_msg = {
                     "role": "system",
-                    "content": "You are an assistant. If you need more information, use 'user_interaction'.",
+                    "content": prompt_dict["reasoning_agent_prompt"],
                     "timestamp": date
                 }
 
@@ -53,6 +54,60 @@ class ConversationManager:
                     "p_chat_id": self.chat_id,
                     "p_new_message": new_msg_obj,
                 }).execute();
-            return None
         except Exception as e:
             print(f"Error adding message: {e}")
+    
+    #process_log is a table database that acts as the internal memory for the reasoning model
+    #add process step into process database
+    def add_process_log(self, task_id: str, step_type: str, payload: dict):
+        try:
+            self.client.table("process_log").insert({
+                "task_id": task_id,
+                "chat_id": self.chat_id,
+                "step_type": step_type,
+                "payload": payload
+            }).execute()
+        except Exception as e:
+            print(f"Error adding process log: {e}")
+
+    #get the process logs in order so the reasoning model to keep context
+    def get_process_log(self, task_id: str):
+        try:
+            response = self.client.table("process_log").select("*").eq("task_id", task_id).order("created_at", desc=False).execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Error getting process log: {e}")
+    
+    # compile process log into messages expeced from model
+    def compile_process_logs(self, task_id: str, system_prompt_text: str):
+        # This is system prompt first
+        messages = [
+            {"role": "system", "content": system_prompt_text}
+        ]
+
+        #  Get history from DB
+        history_rows = self.get_process_log(task_id)
+
+        # reconstruct exact format needed
+        for row in history_rows:
+            step_type = row['step_type']
+            payload = row['payload']
+
+            if step_type == 'user':
+                messages.append({"role": "user", "content": payload})
+
+            elif step_type == 'thought':
+                messages.append({"role": "assistant", "content": payload})
+
+            elif step_type == 'assistant_tool_call':
+                message_data = payload['choices'][0]['message']
+                messages.append(message_data)
+
+            elif step_type == 'tool_result':
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": payload.get("tool_call_id"),
+                    "content": payload.get("content")
+                })
+
+        return messages

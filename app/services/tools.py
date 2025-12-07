@@ -106,7 +106,7 @@ tool_definitions = [
         "type": "function",
         "function":{
         "name": "user_interaction",
-        "description": "In the case of missing piece of information or confirmation needed to complete a task, use tool to interact with user.",
+        "description": "Use this function ONLY when you need to stop the execution loop to ask the user a question. The argument question should contain the clear, direct question you want to ask. The execution will pause until the user replies.",
         "strict": True,
         "parameters": {
             "type": "object",
