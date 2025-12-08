@@ -36,17 +36,11 @@ class ConversationManager:
             if not self._load_message_history():
                 print(f"creting new chat: {self.chat_id}")
 
-                # Define System Prompt
-                system_msg = {
-                    "role": "system",
-                    "content": prompt_dict["reasoning_agent_prompt"],
-                    "timestamp": date
-                }
-
+                #insert first message
                 self.client.table("chats").insert({
                     "chat_id": self.chat_id,
                     "user_id": self.user_id,
-                    "messages": [system_msg, new_msg_obj]
+                    "messages": new_msg_obj
                 }).execute()
             #else, add the message to the chat 
             else:
