@@ -39,9 +39,7 @@ def get_base_conversion(number:int, target_base: int, starting_base: int|None=10
 
 #tool def
 def user_interaction(query: str):
-    print(f'AI asks: {query}')
-    user_input = input("answer: ")
-    return user_input
+    return {"action": "ask_user", "question": query}
 
 
 tool_dict = {
