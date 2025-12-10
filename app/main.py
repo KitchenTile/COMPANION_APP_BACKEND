@@ -21,6 +21,8 @@ class ChatMessageRequest(BaseModel):
     user_id: str
     message: str
     task_id: Optional[str] = None 
+    pending_tool_id: Optional[str] = None 
+
 
 #interface for the response
 class QueryResponse(BaseModel):
@@ -65,6 +67,19 @@ async def send_message(userQuery: ChatMessageRequest):
         # init client
         client = OpenAI()
 
+        print(current_task_id)
+
+        if userQuery.pending_tool_id:
+            # We dont add a user message. We add a TOOL result
+            memory.add_process_log(
+                task_id=current_task_id,
+                step_type="tool_result",
+                payload={
+                    "tool_call_id": userQuery.pending_tool_id, 
+                    "content": userQuery.message
+                }
+            )
+
         #add the message (new chat or new messaged handled in conv manager class)
         memory.add_message(userQuery.message, "user")
 
@@ -101,6 +116,20 @@ async def send_message(userQuery: ChatMessageRequest):
                     func_args = json.loads(tool_call.function.arguments)
 
                     result = func(**func_args)
+
+                    #check if the tool is a user question
+                    if isinstance(result, dict) and result.get('action') == "ask_user":
+                        print("in the user question conditional")
+                        #send the question to the front end
+                        memory.add_message(result['question'], "assistant")
+                        #stop the function
+                        return {
+                            "status": "needs_info", 
+                            "data": result['question'], 
+                            "task_id": current_task_id,
+                            "pending_tool_id": tool_call.id 
+                        } 
+                                       
                     memory.add_process_log(
                         task_id=current_task_id,
                         step_type="tool_result",
