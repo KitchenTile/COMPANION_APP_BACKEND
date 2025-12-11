@@ -69,6 +69,7 @@ async def send_message(userQuery: ChatMessageRequest):
 
         print(current_task_id)
 
+        #if the user message is a response to the gpt tool
         if userQuery.pending_tool_id:
             # We dont add a user message. We add a TOOL result
             memory.add_process_log(
@@ -79,12 +80,15 @@ async def send_message(userQuery: ChatMessageRequest):
                     "content": userQuery.message
                 }
             )
+            #add the message to the front facing conversation
+            memory.add_message(userQuery.message, "user")
+        # if it's a normal message
+        else:
+            #add the message (new chat or new messaged handled in conv manager class)
+            memory.add_message(userQuery.message, "user")
 
-        #add the message (new chat or new messaged handled in conv manager class)
-        memory.add_message(userQuery.message, "user")
-
-        #add user message to process log for the model
-        memory.add_process_log(current_task_id, "user", userQuery.message)
+            #add user message to process log for the model
+            memory.add_process_log(current_task_id, "user", userQuery.message)
             
         #orchestrator loop to avoid countless conditional statements
         while True:
@@ -129,7 +133,8 @@ async def send_message(userQuery: ChatMessageRequest):
                             "task_id": current_task_id,
                             "pending_tool_id": tool_call.id 
                         } 
-                                       
+
+                    #log the tool use         
                     memory.add_process_log(
                         task_id=current_task_id,
                         step_type="tool_result",
@@ -142,21 +147,21 @@ async def send_message(userQuery: ChatMessageRequest):
             else:
                 break
 
-            #second model call
-            completion_2 = client.chat.completions.parse(
-                model="gpt-5-nano",
-                messages=memory.compile_process_logs(current_task_id, prompt_dict["reasoning_agent_prompt"]),
-                tools=tool_definitions,
-                response_format=QueryResponse
-            )
+        #second model call
+        completion_2 = client.chat.completions.parse(
+            model="gpt-5-nano",
+            messages=memory.compile_process_logs(current_task_id, prompt_dict["reasoning_agent_prompt"]),
+            tools=tool_definitions,
+            response_format=QueryResponse
+        )
 
-            #output
-            final_response = completion_2.choices[0].message.parsed
+        #output
+        final_response = completion_2.choices[0].message.parsed
 
-            memory.add_message(final_response.response, "assistant")
+        memory.add_message(final_response.response, "assistant")
 
 
-        return {"status": "Message received", "data": userQuery}
+        return {"status": "Completed", "task_id": current_task_id, "response_text": final_response.response, "data": userQuery}
 
     except Exception as e:
         print(f"Server Error: {e}")
