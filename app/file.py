@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 import requests
 import json
-from services.melelem.memory import ConversationManager
+from services.orchestrator.memory import ConversationManager
 from services.tools import tool_definitions, tool_dict
 from services.prompts.prompts import prompt_dict
 
@@ -20,11 +20,12 @@ client = OpenAI()
 
 current_task_id = str(uuid.uuid4())
 
-conversation_memory.add_process_log(current_task_id, "user", 'what is my horoscope for today?')
+conversation_memory.add_process_log(current_task_id, "user", 'what is the number 10 in base 2?')
 
     
 #orchestrator loop to avoid countless conditional statements
 while True:
+    print(f"task_id: {current_task_id}")
     #model call
     completion = client.chat.completions.create(
         model="gpt-5-nano",
@@ -53,6 +54,8 @@ while True:
             func_args = json.loads(tool_call.function.arguments)
 
             result = func(**func_args)
+            print("result")
+            print(result)
 
             if result["action"] == "ask_user":
                 conversation_memory.add_process_log(

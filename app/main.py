@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from requests import request
-from services.melelem.memory import ConversationManager
+from services.orchestrator.memory import ConversationManager
 from services.tools import tool_definitions, tool_dict
 from services.prompts.prompts import prompt_dict
 import os
