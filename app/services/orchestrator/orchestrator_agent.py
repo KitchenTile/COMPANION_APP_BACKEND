@@ -5,7 +5,7 @@ from app.services.orchestrator.memory import ConversationManager
 
 
 class OrchestratorAgent(AgentBase):
-    def __init__(self,name:str, client: Any ,tool_definitions: list[Dict], tool_dict: Dict[str, callable], prompt: str, chat_id: str, user_id: str):
+    def __init__(self, name:str, client: Any, tool_definitions: list[Dict], tool_dict: Dict[str, callable], prompt: str, chat_id: str, user_id: str):
         super().__init__( name, client)
 
         self.tools = tool_definitions
