@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 from openai import OpenAI
 from pydantic import BaseModel
 from app.services.agent_base import AgentBase
+from app.services.orchestrator.memory import ConversationManager
 from app.services.prompts.prompts import prompt_dict
 
 from dotenv import load_dotenv
@@ -21,6 +22,7 @@ class ClientAgent(AgentBase):
         self.chat_id = chat_id
         self.user_message = user_message
         self.message_intent = self._categorize_message_intent(response_format=CategorizeResponse)
+        self.memory = ConversationManager(chat_id, user_id)
 
     def receive_message(self, packet):
         return super().receive_message(packet)
@@ -44,14 +46,19 @@ class ClientAgent(AgentBase):
             
         return response.output[1].content[0].text
     
-        #reply to non urgent message
+    #reply to non urgent message
     def _handle_social_message(self):
 
+        #add message to client application
+        self.memory.add_message(self.user_message, "assistant")
 
+        #GPT call
         response = self.client.responses.parse(
             model="gpt-5-nano",
             input=prompt_dict["front_facing_agent_social_prompt"]
         )
+
+        return response
     
 client = OpenAI()
 
