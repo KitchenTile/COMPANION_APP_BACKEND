@@ -29,6 +29,12 @@ class ClientAgent(AgentBase):
     
     def get_intent(self):
         return self.message_intent
+    
+    def handle_message(self):
+        if self.message_intent == "SOCIAL":
+            self._handle_social_message()
+        elif self.message_intent == "TASK":
+            self._handle_task_message()
 
 
     def _categorize_message_intent(self, response_format: Optional[Any] = None):
@@ -55,11 +61,21 @@ class ClientAgent(AgentBase):
         #GPT call
         response = self.client.responses.parse(
             model="gpt-5-nano",
-            input=prompt_dict["front_facing_agent_social_prompt"]
+            instructions=prompt_dict["front_facing_agent_social_prompt"],
+            input=self.user_message
         )
 
-        return response
+        print(response.output[1].content[0].text)
+
+        return response.output[1].content[0].text
+    
+    #send task to redis queue
+    def _handle_task_message(self):
+        return
+
     
 client = OpenAI()
 
-client_agent = ClientAgent("Client_Agent", client, "user_id", chat_id="Chat_id", user_message="THIS IS AN EMERGENCY TEXT!")
+client_agent = ClientAgent("Client_Agent", client, "user_id", chat_id="Chat_id", user_message="Hi! How are you?")
+
+client_agent.handle_message()
