@@ -45,12 +45,12 @@ class OrchestratorAgent(AgentBase):
         return response
     
     def _use_tool(self, tool_call):
+        func_name = tool_call.function.name
 
         #if the tool is in the agent's tool box
         if func_name in self.tool_dict:
             try:
                 print(tool_call.function.name, tool_call.function.arguments)
-                func_name = tool_call.function.name
                 func_args = json.loads(tool_call.function.arguments)
                 func = self.tool_dict[func_name]
 
