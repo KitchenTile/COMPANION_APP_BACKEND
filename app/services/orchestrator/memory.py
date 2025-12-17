@@ -1,7 +1,6 @@
 import os
 from supabase import Client, create_client
 from datetime import datetime, timezone
-from services.prompts.prompts import prompt_dict
 
 class ConversationManager:
     def __init__(self, chat_id:str, user_id: str):
