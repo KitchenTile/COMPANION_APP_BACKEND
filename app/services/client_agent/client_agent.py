@@ -8,6 +8,7 @@ from app.services.prompts.prompts import prompt_dict
 from dotenv import load_dotenv
 
 
+
 load_dotenv()
 
 class CategorizeResponse(BaseModel):
@@ -32,9 +33,16 @@ class ClientAgent(AgentBase):
     
     def handle_message(self):
         if self.message_intent == "SOCIAL":
+            #handle social message
             self._handle_social_message()
+
         elif self.message_intent == "TASK":
+            #handle task usage
             self._handle_task_message()
+            
+        elif self.message_intent == "EMERGENCY":
+            #handle emergency
+            return
 
 
     def _categorize_message_intent(self, response_format: Optional[Any] = None):
@@ -76,6 +84,6 @@ class ClientAgent(AgentBase):
     
 client = OpenAI()
 
-client_agent = ClientAgent("Client_Agent", client, "user_id", chat_id="Chat_id", user_message="Hi! How are you?")
+# client_agent = ClientAgent("Client_Agent", client, "user_id", chat_id="Chat_id", user_message="Hi! How are you?")
 
-client_agent.handle_message()
+# client_agent.handle_message()
