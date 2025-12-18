@@ -6,7 +6,7 @@ from app.services.orchestrator.memory import ConversationManager
 
 class OrchestratorAgent(AgentBase):
     def __init__(self, name:str, client: Any, tool_definitions: list[Dict], tool_dict: Dict[str, callable], prompt: str, chat_id: str, user_id: str):
-        super().__init__( name, client)
+        super().__init__( name=name, client=client)
 
         self.tools = tool_definitions
         self.tool_dict = tool_dict
@@ -17,11 +17,13 @@ class OrchestratorAgent(AgentBase):
         self.task_id = None
 
     #get message from redis broaker
-    def receive_message(self, packet: Dict[str, Any]):
+    def receive_message(self, packet):
+        print("message recieved...")
         #comes with task_id
         self.task_id = packet.get("task_id")
+        print(packet)
         #and message
-        user_text = packet['content'].get("text")
+        user_text = packet['content'].get("message")
         
         # Log the user's start
         self.memory.add_process_log(self.task_id, "user", user_text)
@@ -30,7 +32,7 @@ class OrchestratorAgent(AgentBase):
         return self.run()
 
     #call LLM with parameters for differnet model (more or less thinking) and response format
-    def _LLM_call(self, model, response_format: Optional[Dict] = None):
+    def _LLM_call(self, model):
 
         if not self.task_id:
             raise ValueError("No task_id set for LLM call")
@@ -39,7 +41,6 @@ class OrchestratorAgent(AgentBase):
             model=model,
             messages=self.memory.compile_process_logs(self.task_id, self.prompt),
             tools=self.tools,
-            response_format=response_format
         )
 
         return response
@@ -122,3 +123,4 @@ class OrchestratorAgent(AgentBase):
                     "data": final_content,
                     "task_id": self.task_id
                 }
+            
