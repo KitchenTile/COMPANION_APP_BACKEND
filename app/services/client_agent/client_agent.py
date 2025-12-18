@@ -1,4 +1,6 @@
+import json
 from typing import Any, Dict, Optional
+from uuid import uuid4
 from openai import OpenAI
 from pydantic import BaseModel
 from app.services.agent_base import AgentBase
@@ -16,7 +18,7 @@ class CategorizeResponse(BaseModel):
     
 
 class ClientAgent(AgentBase):
-    def __init__(self, name: str, client: Any, user_id: str, chat_id: str, user_message: str):
+    def __init__(self, name: str, client: Any, user_id: str, chat_id: str, dispatcher: Any, user_message: str):
         super().__init__(name = name, client = client)
 
         self.user_id = user_id
@@ -24,6 +26,7 @@ class ClientAgent(AgentBase):
         self.user_message = user_message
         self.message_intent = self._categorize_message_intent(response_format=CategorizeResponse)
         self.memory = ConversationManager(chat_id, user_id)
+        self.dispatcher = dispatcher
 
     def receive_message(self, packet):
         return super().receive_message(packet)
@@ -34,24 +37,23 @@ class ClientAgent(AgentBase):
     def handle_message(self):
         if self.message_intent == "SOCIAL":
             #handle social message
-            self._handle_social_message()
+            return self._handle_social_message()
 
         elif self.message_intent == "TASK":
             #handle task usage
             self._handle_task_message()
-            
+
         elif self.message_intent == "EMERGENCY":
             #handle emergency
             return
 
 
-    def _categorize_message_intent(self, response_format: Optional[Any] = None):
+    def _categorize_message_intent(self):
         #make an LLM call to figure out what to do with the user message
         response = self.client.responses.parse(
             model="gpt-5-nano",
             input=self.user_message,
-            instructions="Categorize the user message into ONE of the following intents: SOCIAL, EMERGENCY, TASK",
-            # response_format=response_format
+            instructions="Categorize the user message into ONE of the following intents: SOCIAL, EMERGENCY, TASK (TASK includes asking for horoscope)",
         )
 
         print("user intent:")
@@ -63,8 +65,8 @@ class ClientAgent(AgentBase):
     #reply to non urgent message
     def _handle_social_message(self):
 
-        #add message to client application
-        self.memory.add_message(self.user_message, "assistant")
+        #add user message to DB
+        self.memory.add_message(self.user_message, "user")
 
         #GPT call
         response = self.client.responses.parse(
@@ -73,13 +75,43 @@ class ClientAgent(AgentBase):
             input=self.user_message
         )
 
-        print(response.output[1].content[0].text)
+        final_response = response.output[1].content[0].text
+
+        #add response to DB
+        self.memory.add_message(final_response, "assistant")
 
         return response.output[1].content[0].text
     
-    #send task to redis queue
+    #send task to redis queue for other agent
     def _handle_task_message(self):
-        return
+        try:
+            #create packet
+            packet = {
+                "message_id": str(uuid4()),
+                "chat_id": self.chat_id,
+                "sender": self.name,
+                "resiver": "orchestrator_agent",
+                "performative": "REQUEST",
+
+                "user_id": self.user_id,
+                "task_id": str(uuid4()),
+
+                "content": {"message": self.user_message},
+            }
+            print(packet)
+
+            packet_json = json.dumps(packet)
+
+
+            #dispatch
+            self.dispatcher.lpush("orchestrator_queue", packet_json)
+            print("past sending")
+
+            return "message sent"
+
+        except Exception as e:
+            print(f"Server Error In handle task: {e}")
+    
 
     
 client = OpenAI()
