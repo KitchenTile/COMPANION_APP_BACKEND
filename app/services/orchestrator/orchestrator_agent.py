@@ -21,12 +21,28 @@ class OrchestratorAgent(AgentBase):
         print("message recieved...")
         #comes with task_id
         self.task_id = packet.get("task_id")
-        print(packet)
-        #and message
+        print(packet['pending_tool_id'])
+
+        #get message
         user_text = packet['content'].get("message")
-        
-        # Log the user's start
-        self.memory.add_process_log(self.task_id, "user", user_text)
+            
+        #if there's no tool usage
+        if (packet.get("pending_tool_id") == None):
+            # Log the user's start
+            self.memory.add_process_log(self.task_id, "user", user_text)
+        else:
+            #get tool id
+            tool_id = packet.get("pending_tool_id")
+
+            #else add tool use to the process messages
+            self.memory.add_process_log(
+                task_id=self.task_id,
+                step_type="tool_result",
+                payload={
+                    "tool_call_id": tool_id, 
+                    "content": user_text
+                }
+            )
         
         # Start the Loop
         return self.run()
@@ -115,6 +131,9 @@ class OrchestratorAgent(AgentBase):
             else:
                 # If no tools are called, return the models answer
                 final_content = completion.choices[0].message.content
+
+                print("final_content")
+                print(final_content)
                 
                 self.memory.add_message(final_content, "assistant")
                 
