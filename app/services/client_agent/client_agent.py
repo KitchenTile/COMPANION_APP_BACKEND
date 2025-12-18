@@ -18,15 +18,18 @@ class CategorizeResponse(BaseModel):
     
 
 class ClientAgent(AgentBase):
-    def __init__(self, name: str, client: Any, user_id: str, chat_id: str, dispatcher: Any, user_message: str):
+    def __init__(self, name: str, client: Any, user_id: str, chat_id: str, dispatcher: Any, user_message: str, pending_tool_id: Any, task_id: str):
         super().__init__(name = name, client = client)
 
         self.user_id = user_id
         self.chat_id = chat_id
+        self.task_id = task_id
         self.user_message = user_message
-        self.message_intent = self._categorize_message_intent(response_format=CategorizeResponse)
+        self.pending_tool_id = pending_tool_id
+        self.message_intent = self._categorize_message_intent()
         self.memory = ConversationManager(chat_id, user_id)
         self.dispatcher = dispatcher
+
 
     def receive_message(self, packet):
         return super().receive_message(packet)
@@ -39,7 +42,7 @@ class ClientAgent(AgentBase):
             #handle social message
             return self._handle_social_message()
 
-        elif self.message_intent == "TASK":
+        elif self.message_intent == "TASK" or self.message_intent == "TOOL_USE":
             #handle task usage
             self._handle_task_message()
 
@@ -49,18 +52,25 @@ class ClientAgent(AgentBase):
 
 
     def _categorize_message_intent(self):
-        #make an LLM call to figure out what to do with the user message
-        response = self.client.responses.parse(
-            model="gpt-5-nano",
-            input=self.user_message,
-            instructions="Categorize the user message into ONE of the following intents: SOCIAL, EMERGENCY, TASK (TASK includes asking for horoscope)",
-        )
+        try:
+            if self.pending_tool_id != None:
+                return "TOOL_USE"
 
-        print("user intent:")
-        print(response.output[1].content[0].text)
+            #make an LLM call to figure out what to do with the user message
+            response = self.client.responses.parse(
+                model="gpt-5-nano",
+                input=self.user_message,
+                instructions="Categorize the user message into ONE of the following intents: SOCIAL, EMERGENCY, TASK (TASK includes asking for horoscope)",
+            )
 
-            
-        return response.output[1].content[0].text
+            print("user intent:")
+            print(response.output[1].content[0].text)
+
+                
+            return response.output[1].content[0].text
+        
+        except Exception as e:
+            print(f"Server Error In categorize message: {e}")
     
     #reply to non urgent message
     def _handle_social_message(self):
@@ -85,6 +95,10 @@ class ClientAgent(AgentBase):
     #send task to redis queue for other agent
     def _handle_task_message(self):
         try:
+
+            #add user message to DB
+            self.memory.add_message(self.user_message, "user")
+
             #create packet
             packet = {
                 "message_id": str(uuid4()),
@@ -94,7 +108,8 @@ class ClientAgent(AgentBase):
                 "performative": "REQUEST",
 
                 "user_id": self.user_id,
-                "task_id": str(uuid4()),
+                "task_id": self.task_id,
+                "pending_tool_id": self.pending_tool_id,
 
                 "content": {"message": self.user_message},
             }
@@ -107,7 +122,12 @@ class ClientAgent(AgentBase):
             self.dispatcher.lpush("orchestrator_queue", packet_json)
             print("past sending")
 
-            return "message sent"
+
+            #if there's no tool usage
+            if self.pending_tool_id != None:
+                #add quick response to db
+                self.memory.add_message('Absolutely, let me get that ready and come back with the answer in just a minute.', 'assistant')
+                return "Absolutely, let me get that ready and come back with the answer in just a minute."
 
         except Exception as e:
             print(f"Server Error In handle task: {e}")
