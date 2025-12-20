@@ -28,13 +28,15 @@ while True:
     #initialise the agent
     orchestrator = OrchestratorAgent(name="OrchestratorAgent",client=client ,tool_definitions=tool_definitions, tool_dict=tool_dict, prompt=prompt_dict["reasoning_agent_prompt"], user_id=packet["user_id"], chat_id=packet["chat_id"])
 
-    print("---")
-    print(orchestrator)
-    print("---")
     #call function to run the loop
     result = orchestrator.receive_message(packet)
 
     result_dump = json.dumps(result)
 
+    print("------- result_log ------")
+
+    print(result)
+
     #oublish it
-    r.publish(f"chat_updates_{packet['chat_id']}", result_dump)
+    r.publish(packet['chat_id'], result_dump)
+    
