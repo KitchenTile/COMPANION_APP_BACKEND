@@ -15,13 +15,13 @@ class OrchestratorAgent(AgentBase):
         self.user_id = user_id
         self.memory = ConversationManager(self.chat_id, self.user_id)
         self.task_id = None
+        self.message_id = None
 
     #get message from redis broaker
     def receive_message(self, packet):
         print("message recieved...")
         #comes with task_id
         self.task_id = packet.get("task_id")
-        print(packet['pending_tool_id'])
 
         #get message
         user_text = packet['content'].get("message")
@@ -112,12 +112,21 @@ class OrchestratorAgent(AgentBase):
                         #send the question to the front end
                         self.memory.add_message(result['question'], "assistant")
                         #stop the function
-                        return {
-                            "status": "needs_info", 
-                            "data": result['question'], 
+
+                        user_reply = {
+                            "performative": "REQUEST", 
+                            "content": {"message": result['question']}, 
                             "task_id": self.task_id,
-                            "pending_tool_id": tool_call.id 
+                            "pending_tool_id": tool_call.id ,
+                            "message_id": self.message_id,
+                            "user_id": self.user_id,
+                            "chat_id": self.chat_id,
+                            "sender": self.name,
+                            "receiver": "user"
                         } 
+                        print(user_reply)
+
+                        return user_reply
 
                     #log the tool use         
                     self.memory.add_process_log(
