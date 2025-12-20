@@ -44,7 +44,7 @@ class ClientAgent(AgentBase):
 
         elif self.message_intent == "TASK" or self.message_intent == "TOOL_USE":
             #handle task usage
-            self._handle_task_message()
+            return self._handle_task_message()
 
         elif self.message_intent == "EMERGENCY":
             #handle emergency
@@ -90,7 +90,7 @@ class ClientAgent(AgentBase):
         #add response to DB
         self.memory.add_message(final_response, "assistant")
 
-        return response.output[1].content[0].text
+        return {"answer": final_response, "status": "Completed"}
     
     #send task to redis queue for other agent
     def _handle_task_message(self):
@@ -104,7 +104,7 @@ class ClientAgent(AgentBase):
                 "message_id": str(uuid4()),
                 "chat_id": self.chat_id,
                 "sender": self.name,
-                "resiver": "orchestrator_agent",
+                "receiver": "orchestrator_agent",
                 "performative": "REQUEST",
 
                 "user_id": self.user_id,
@@ -122,13 +122,18 @@ class ClientAgent(AgentBase):
             self.dispatcher.lpush("orchestrator_queue", packet_json)
             print("past sending")
 
-
             #if there's no tool usage
             if self.pending_tool_id != None:
+                message = 'Thank you for the clarifying information, let me get that ready and come back with the answer in just a minute.'
                 #add quick response to db
-                self.memory.add_message('Absolutely, let me get that ready and come back with the answer in just a minute.', 'assistant')
-                return "Absolutely, let me get that ready and come back with the answer in just a minute."
+                self.memory.add_message(message, 'assistant')
+                return {"answer": message, "status": "Completed"}
+            
+            self.memory.add_message("Of course, I'll let you know when I'm ready to reply", 'assistant')
 
+            return {"answer": "Of course, I'll let you know when I'm ready to reply", "status": "Completed"}
+
+            
         except Exception as e:
             print(f"Server Error In handle task: {e}")
     
