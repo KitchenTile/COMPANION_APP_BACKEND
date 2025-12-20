@@ -5,7 +5,7 @@ from pydantic import BaseModel
 class AgentMessage(BaseModel):
     #FIPA header
     nessage_id: str
-    conversation_id: str
+    chat_id: str
     sender: str
     resiver: str
     performative: str
