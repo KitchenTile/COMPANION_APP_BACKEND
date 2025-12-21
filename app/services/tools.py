@@ -1,5 +1,8 @@
 import requests
+import dotenv
+import os
 
+dotenv.load_dotenv()
 
 
 #tool def
@@ -42,10 +45,97 @@ def user_interaction(query: str):
     return {"action": "ask_user", "question": query}
 
 
+#tool def
+def calculate_google_maps_route(origin: str, destination: str, transport_mode: list[str]):
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": os.getenv("GOOGLE_MAPS_API_KEY"),
+        "X-Goog-FieldMask": "routes.*"
+    }
+
+    try:
+        data = {
+            "origin": {
+                "address": origin
+                },
+            "destination": {
+                "address": destination
+                },
+            "travelMode": "TRANSIT",
+            "computeAlternativeRoutes": False,
+            "transitPreferences": {
+                "routingPreference": "LESS_WALKING",
+                "allowedTravelModes": transport_mode
+            }
+        }
+
+        response = requests.post('https://routes.googleapis.com/directions/v2:computeRoutes', headers=headers, json=data)    
+
+        data = response.json()
+
+        if not data['routes'][0]:
+             return "No routes found"
+        
+        route = data['routes'][0]
+
+        #get fastest route metadata
+        route_summary = {
+            # "route_id": index + 1,
+            "duration": route.get("localizedValues", {}).get("duration", {}).get("text"),
+            "distance": route.get("localizedValues", {}).get("distance", {}).get("text"),
+            "fare": route.get("localizedValues", {}).get("transitFare", {}).get("text", "N/A"),
+            "steps": []
+        }
+
+        # go through the route steps and add them to the summary
+        for leg in route.get("legs", []):
+            for index, step in enumerate(leg.get("steps", [])):
+
+                # Handle Transit Details
+                if "transitDetails" in step:
+                    transit = step["transitDetails"]
+                    line = transit.get("transitLine", {})
+
+                    step_instruction = (
+                        f"Step {index + 1}: "
+                        f"Take {line.get('vehicle', {}).get('name', {}).get('text')} "
+                        f"{line.get('nameShort', line.get('name'))} "
+                        f"towards {transit.get('headsign')} "
+                        f"for {transit.get('stopCount')} stops ({step.get("localizedValues", {}).get("staticDuration", {}).get("text")}), "
+                        f"from {transit.get("stopDetails", {}).get("departureStop", {}).get("name")} "
+                        f"until {transit.get("stopDetails", {}).get("arrivalStop", {}).get("name")}."
+                    )
+                    
+
+                # Handle Walking Details
+                elif "navigationInstruction" in step:
+                    nav = step["navigationInstruction"]
+
+                    step_instruction = (
+                        f"Step {index + 1}: {nav.get("instructions", "Walk")}. "
+                        f"It should take {step.get("localizedValues", {}).get("staticDuration", {}).get("text")} ({step.get("localizedValues", {}).get("distance", {}).get("text")})"
+                    )
+                
+                route_summary["steps"].append(step_instruction)
+        
+        steps_string = "\n".join(route_summary['steps'])
+                
+        final_string = (
+            f"The trip should take a total of {route_summary['duration']} and cost around {route_summary['fare']}.\n\n"
+            f"Here are the steps:\n{steps_string}"
+        )
+        
+        return final_string
+
+    except requests.exceptions.RequestException as e:
+        return f"An error occurred: {e}"
+
+
 tool_dict = {
     "get_horoscope": get_horoscope,
     "get_base_conversion": get_base_conversion,
-    "user_interaction": user_interaction
+    "user_interaction": user_interaction,
+    "calculate_google_maps_route": calculate_google_maps_route
 }
 
 #tools available for the model
@@ -115,6 +205,37 @@ tool_definitions = [
                 },
             },
             "required": ["query"],
+            "additionalProperties": False
+        },
+        }
+    },
+    {
+        "type": "function",
+        "function":{
+        "name": "calculate_google_maps_route",
+        "description": "Function to calculate route between two places.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "origin": {
+                    "type": "string",
+                    "description": "Point of origin used to calculate route.",
+                },
+                "destination": {
+                    "type": "string",
+                    "description": "Destination used to calculate route.",
+                },
+                "transport_mode": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": ["BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL", "RAIL"]
+                },
+                    "description": "Transit modes to allow"
+                }
+            },
+            "required": ["origin", "destination","transport_mode"],
             "additionalProperties": False
         },
         }
