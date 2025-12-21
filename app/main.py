@@ -1,4 +1,3 @@
-import json
 from typing import Optional
 import uuid
 from dotenv import load_dotenv
@@ -6,14 +5,10 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from openai import OpenAI
 from pydantic import BaseModel, Field
 import redis
-from requests import request
-# from app.services.client_agent.client_agent import ClientAgent
 from app.services.client_agent.client_agent import ClientAgent
 from app.services.orchestrator.memory import ConversationManager
 from app.utils.websocket_manager import WebsocketManager
-# from app.services.tools import tool_definitions, tool_dict
-# from app.services.prompts.prompts import prompt_dict
-# import os
+
 
 load_dotenv()
 
@@ -112,76 +107,3 @@ async def send_message(userQuery: ChatMessageRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
-
-
-
-    #OLD WHILE LOOP
-        # #orchestrator loop to avoid countless conditional statements
-        # while True:
-        #     #model call
-        #     completion = client.chat.completions.create(
-        #         model="gpt-5-nano",
-        #         messages=memory.compile_process_logs(current_task_id, prompt_dict["reasoning_agent_prompt"]),
-        #         tools=tool_definitions,
-        #     )
-
-        #     #get model to decide if they want to use tool
-        #     completion.model_dump()
-
-        #     #if we use tools, add the message to the message array 
-        #     if completion.choices[0].message.tool_calls:
-
-        #         #add the tool usage to the process log
-        #         memory.add_process_log(
-        #             task_id=current_task_id,
-        #             step_type="assistant_tool_call", 
-        #             payload=completion.model_dump() 
-        #         )
-
-        #         #and loop to use tool(s)
-        #         for tool_call in completion.choices[0].message.tool_calls:
-        #             print(tool_call.function.name, tool_call.function.arguments)
-        #             func_name = tool_call.function.name
-        #             func = tool_dict[func_name]
-        #             func_args = json.loads(tool_call.function.arguments)
-
-        #             result = func(**func_args)
-
-        #             #check if the tool is a user question
-        #             if isinstance(result, dict) and result.get('action') == "ask_user":
-        #                 print("in the user question conditional")
-        #                 #send the question to the front end
-        #                 memory.add_message(result['question'], "assistant")
-        #                 #stop the function
-        #                 return {
-        #                     "status": "needs_info", 
-        #                     "data": result['question'], 
-        #                     "task_id": current_task_id,
-        #                     "pending_tool_id": tool_call.id 
-        #                 } 
-
-        #             #log the tool use         
-        #             memory.add_process_log(
-        #                 task_id=current_task_id,
-        #                 step_type="tool_result",
-        #                 payload={
-        #                     # "role": "tool",
-        #                     "tool_call_id": tool_call.id, 
-        #                     "content": str(result)
-        #                 }
-        #             )
-        #     else:
-        #         break
-
-        # #second model call
-        # completion_2 = client.chat.completions.parse(
-        #     model="gpt-5-nano",
-        #     messages=memory.compile_process_logs(current_task_id, prompt_dict["reasoning_agent_prompt"]),
-        #     tools=tool_definitions,
-        #     response_format=QueryResponse
-        # )
-
-        # #output
-        # final_response = completion_2.choices[0].message.parsed
-
-        # memory.add_message(final_response.response, "assistant")
