@@ -4,103 +4,186 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 import requests
-import json
-from services.orchestrator.memory import ConversationManager
-from services.tools import tool_definitions, tool_dict
-from services.prompts.prompts import prompt_dict
+import os
 
 #load env file
 load_dotenv()
 
-conversation_memory = ConversationManager("5616b7de-165c-44a9-88a7-e2b5d2e4523d", "5616b7de-165c-44a9-88a7-e2b5d2e4523c")
-
-conversation_memory.messages
-# init client
 client = OpenAI()
 
-current_task_id = str(uuid.uuid4())
 
-conversation_memory.add_process_log(current_task_id, "user", 'what is the number 10 in base 2?')
 
-    
-#orchestrator loop to avoid countless conditional statements
-while True:
-    print(f"task_id: {current_task_id}")
-    #model call
-    completion = client.chat.completions.create(
-        model="gpt-5-nano",
-        messages=conversation_memory.compile_process_logs(current_task_id, prompt_dict["reasoning_agent_prompt"]),
-        tools=tool_definitions,
-    )
+#tool def
+def calculate_google_maps_route(origin: str, destination: str, transport_mode: list[str]):
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": os.getenv("GOOGLE_MAPS_API_KEY"),
+        "X-Goog-FieldMask": "routes.*"
+    }
 
-    #get model to decide if they want to use tool
-    completion.model_dump()
+    try:
+        data = {
+            "origin": {
+                "address": origin
+                },
+            "destination": {
+                "address": destination
+                },
+            "travelMode": "TRANSIT",
+            "computeAlternativeRoutes": False,
+            "transitPreferences": {
+                "routingPreference": "LESS_WALKING",
+                "allowedTravelModes": transport_mode
+            }
+        }
 
-    #if we use tools, add the message to the message array 
-    if completion.choices[0].message.tool_calls:
+        response = requests.post('https://routes.googleapis.com/directions/v2:computeRoutes', headers=headers, json=data)    
 
-        #add the tool usage to the process log
-        conversation_memory.add_process_log(
-            task_id=current_task_id,
-            step_type="assistant_tool_call", 
-            payload=completion.model_dump() 
-        )
+        data = response.json()
+        
+        route = data['routes'][0]
 
-        #and loop to use tool(s)
-        for tool_call in completion.choices[0].message.tool_calls:
-            print(tool_call.function.name, tool_call.function.arguments)
-            func_name = tool_call.function.name
-            func = tool_dict[func_name]
-            func_args = json.loads(tool_call.function.arguments)
+        #get fastest route metadata
+        route_summary = {
+            # "route_id": index + 1,
+            "duration": route.get("localizedValues", {}).get("duration", {}).get("text"),
+            "distance": route.get("localizedValues", {}).get("distance", {}).get("text"),
+            "fare": route.get("localizedValues", {}).get("transitFare", {}).get("text", "N/A"),
+            "steps": []
+        }
 
-            result = func(**func_args)
-            print("result")
-            print(result)
+        # go through the route steps and add them to the summary
+        for leg in route.get("legs", []):
+            for index, step in enumerate(leg.get("steps", [])):
 
-            if result["action"] == "ask_user":
-                conversation_memory.add_process_log(
-                    task_id=current_task_id,
-                    step_type="tool_result",
-                    payload={
-                        # "role": "tool",
-                        "tool_call_id": tool_call.id, 
-                        "content": str(result)
-                    }
-                )
-                print("User needs to ask question")
-                break
+                # Handle Transit Details
+                if "transitDetails" in step:
+                    transit = step["transitDetails"]
+                    line = transit.get("transitLine", {})
 
-            conversation_memory.add_process_log(
-                task_id=current_task_id,
-                step_type="tool_result",
-                payload={
-                    # "role": "tool",
-                    "tool_call_id": tool_call.id, 
-                    "content": str(result)
-                }
-            )
-    else:
-        print(completion.choices[0].message)
-        break
+                    step_instruction = (
+                        f"Step {index + 1}: "
+                        f"Take {line.get('vehicle', {}).get('name', {}).get('text')} "
+                        f"{line.get('nameShort', line.get('name'))} "
+                        f"towards {transit.get('headsign')} "
+                        f"for {transit.get("stopCount")} stops ({step.get("localizedValues", {}).get("staticDuration", {}).get("text")}), "
+                        f"from {transit.get("stopDetails", {}).get("departureStop", {}).get("name")} "
+                        f"until {transit.get("stopDetails", {}).get("arrivalStop", {}).get("name")}."
+                    )
+                    
 
-#interface for the response
-class QueryResponse(BaseModel):
-    processes: list[str] = Field(
-        description="an array of processes fulfilled to succesfully complete user's query"
-    )
-    response: str = Field(
-        description="A natural language response to the user's question."
-    )
+                # Handle Walking Details
+                elif "navigationInstruction" in step:
+                    nav = step["navigationInstruction"]
 
-#second model call
-completion_2 = client.chat.completions.parse(
-    model="gpt-5-nano",
-    messages=conversation_memory.compile_process_logs(current_task_id, prompt_dict["reasoning_agent_prompt"]),
-    tools=tool_definitions,
-    response_format=QueryResponse
-)
+                    step_instruction = (
+                        f"Step {index + 1}: {nav.get("instructions", "Walk")}. "
+                        f"It should take {step.get("localizedValues", {}).get("staticDuration", {}).get("text")} ({step.get("localizedValues", {}).get("distance", {}).get("text")})"
+                    )
+                
+                route_summary["steps"].append(step_instruction)
+        
 
-#output
-final_response = completion_2.choices[0].message.parsed
+        return route_summary
 
-print(final_response)
+    except requests.exceptions.RequestException as e:
+        return f"An error occurred: {e}"
+
+
+calculate_google_maps_route("91C Church Road, NW4 4DP, London", "42 Grosvenor Terrace, SE5 0NP, London", ["BUS", "SUBWAY"])
+
+
+
+txt = '1 hour 16 mins'
+txt_2 = '1 hour 17 mins'
+txt_3 = '1 hour 14 mins'
+txt_4 = '1 hour 20 mins'
+
+times = [txt,txt_2,txt_3,txt_4]
+times_mins = {}
+
+for index, time in enumerate(times):
+	x = time.split()
+	if len(x) > 2:
+		hr = x[0]
+		mins = x[2]
+		mins_total = int(hr) * 60 + int(mins)
+		times_mins[index] = mins_total
+	else:
+		times_mins[index] = x[0]
+        
+
+sorted_times = dict(sorted(times_mins.items(), key=lambda item: item[1]))
+
+print(next(iter(sorted_times)))
+
+from math import sin, cos, sqrt, atan2, radians
+
+polyline = 'ozyyHfek@BFdCiDtDeGvB}DlDmHxCmHrAoDhCeIjIkXxPsf@h@cBb@sBb@_DTuCDuCEcDOsC_A{IMgCCsCDsCNuB\\sC`@uBlCsJh@oCZ{BhBgRj@oFbAeI`@mBTw@l@_BbAiBzAkBp@o@fBkArAi@dBc@xCSvBEvIAvCInD[zA]`Bg@bBaA~CqBbCgBpD_DjHaHhGaH`FeHzDgHzCeH`CeHnBaH|A{GhD_PrAaGzAsFhBeFpB{EzBoEbCkEvKwQdCkE`CuExB_FpBgFhBsFbBuFnGqUrA{EbB_FtCoHhAa@hAk@jD}B|I}HpGcGfKoLxQ}Rz@_A^Or@Ev@P\\X^l@x@bChDbLn@rBp@~B^v@\\`@dAl@|@Rz@BdAQdBw@`CwAdBoAlFyEvJcJjMwM`FyEv@m@d@S`Dk@|DeAbEoA|FeCfBy@t@KzC?pAAfASx@c@PQj@iAnF{MjFsLX{@ZeBfFm]b@eB\\}@`@o@fAeAhGuEr@c@CU'
+
+def decode_polyline(polyline_str):
+    index, lat, lng = 0, 0, 0
+    coordinates = []
+    changes = {'latitude': 0, 'longitude': 0}
+
+    # Coordinates have variable length when encoded, so just keep
+    # track of whether we've hit the end of the string. In each
+    # while loop iteration, a single coordinate is decoded.
+    while index < len(polyline_str):
+        # Gather lat/lon changes, store them in a dictionary to apply them later
+        for unit in ['latitude', 'longitude']: 
+            shift, result = 0, 0
+
+            while True:
+                byte = ord(polyline_str[index]) - 63
+                index+=1
+                result |= (byte & 0x1f) << shift
+                shift += 5
+                if not byte >= 0x20:
+                    break
+
+            if (result & 1):
+                changes[unit] = ~(result >> 1)
+            else:
+                changes[unit] = (result >> 1)
+
+        lat += changes['latitude']
+        lng += changes['longitude']
+
+        coordinates.append((lat / 100000.0, lng / 100000.0))
+
+    return coordinates
+
+
+def get_coord_distance(user_location, path_points):
+     
+    # Approximate radius of earth in km
+    R = 6373.0
+
+    user_lat = radians(user_location[0])
+    user_lon = radians(user_location[1])
+
+    for index, point in enumerate(path_points):
+        
+        closest_lat = radians(point[0])
+        closest_lon = radians(point[1])
+
+        dlon = closest_lon - user_lon
+        dlat = closest_lat - user_lat
+
+        a = sin(dlat / 2)**2 + cos(user_lat) * cos(closest_lat) * sin(dlon / 2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        distance = R * c
+
+        if distance < 0.1:
+             print(f"Point {index} is less than 100m from user")
+             return distance
+        else:
+             return "No points less than 100m found"
+
+decoded_polyline = decode_polyline(polyline)
+
+user_location = (51.582465, -0.225788)
+
+get_coord_distance(user_location= user_location, path_points= decoded_polyline)
