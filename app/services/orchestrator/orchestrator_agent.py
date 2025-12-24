@@ -110,10 +110,8 @@ class OrchestratorAgent(AgentBase):
 
                     #check if the tool is a user question
                     if isinstance(result, dict) and result.get('action') == "ask_user":
-                        print("in the user question conditional")
                         #send the question to the front end
                         self.memory.add_message(result['question'], "assistant")
-                        #stop the function
 
                         user_reply = {
                             "performative": "REQUEST", 
@@ -129,6 +127,30 @@ class OrchestratorAgent(AgentBase):
                         print(user_reply)
 
                         return user_reply
+                    
+                    # check if tool returned a Route Object
+                    if isinstance(result, dict) and result.get('action') == "display_route":
+                        # We need to inform the user AND send the polyline
+                        
+                        #save text to memory so LLM knows what happened
+                        self.memory.add_process_log(
+                            task_id=self.task_id,
+                            step_type="tool_result",
+                            payload={"tool_call_id": tool_call.id, "content": result['text']}
+                        )
+                        
+                        #return the structured packet to the frontend
+                        return {
+                            "performative": "INFORM",
+                            "message_id": str(uuid4()),
+                            "chat_id": self.chat_id,
+                            "sender": self.name,
+                            "receiver": "USER",
+                            "user_id": self.user_id,
+                            "task_id": self.task_id,
+                            "content": {"message": result['text']},     
+                            "polyline": result['polyline']
+                        }
 
                     #log the tool use         
                     self.memory.add_process_log(
