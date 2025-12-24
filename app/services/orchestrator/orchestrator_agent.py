@@ -1,8 +1,8 @@
 import json
 from typing import Any, Dict, Optional
+from uuid import uuid4
 from app.services.agent_base import AgentBase
 from app.services.orchestrator.memory import ConversationManager
-
 
 class OrchestratorAgent(AgentBase):
     def __init__(self, name:str, client: Any, tool_definitions: list[Dict], tool_dict: Dict[str, callable], prompt: str, chat_id: str, user_id: str):
@@ -124,7 +124,7 @@ class OrchestratorAgent(AgentBase):
                             "user_id": self.user_id,
                             "chat_id": self.chat_id,
                             "sender": self.name,
-                            "receiver": "user"
+                            "receiver": "USER"
                         } 
                         print(user_reply)
 
@@ -149,8 +149,14 @@ class OrchestratorAgent(AgentBase):
                 self.memory.add_message(final_content, "assistant")
                 
                 return {
-                    "status": "completed",
-                    "data": final_content,
-                    "task_id": self.task_id
+                    "performative": "INFORM",
+                    "message_id": self.message_id,
+                    "chat_id": self.chat_id,
+                    "sender": self.name,
+                    "receiver": "USER",
+
+                    "user_id": self.user_id,
+                    "task_id": self.task_id,
+
+                    "content": {"message": self.user_message},
                 }
-            
