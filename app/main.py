@@ -73,11 +73,12 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: str):
 
                     #dispatch task to orchestrator agent
                     r.lpush("orchestrator_queue", data)
+                else:
+                    await websocket_manager.send_message(chat_id=chat_id, message=data)
+
 
             except Exception as e:
                 print(f"Error handling data: {e}")
-
-            await websocket_manager.send_message(chat_id=chat_id, message=data)
 
     except WebSocketDisconnect:
         await websocket_manager.disconnect(chat_id=chat_id, websocket=websocket)
