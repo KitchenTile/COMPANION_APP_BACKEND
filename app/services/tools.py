@@ -78,9 +78,11 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
         
         route = data['routes'][0]
 
+        #get encoded polyline for the location tracking
+        encodedPolyline = route.get('legs', {}).get('polyline').get('encodedPolyline')
+
         #get fastest route metadata
         route_summary = {
-            # "route_id": index + 1,
             "duration": route.get("localizedValues", {}).get("duration", {}).get("text"),
             "distance": route.get("localizedValues", {}).get("distance", {}).get("text"),
             "fare": route.get("localizedValues", {}).get("transitFare", {}).get("text", "N/A"),
@@ -125,7 +127,12 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
             f"Here are the steps:\n{steps_string}"
         )
         
-        return final_string
+        # return the polyline for user tracking and the text for the agent's response 
+        return {
+            "text": final_string,
+            "polyline": encodedPolyline,
+            "action": "display_route"
+            }
 
     except requests.exceptions.RequestException as e:
         return f"An error occurred: {e}"
@@ -241,3 +248,4 @@ tool_definitions = [
         }
     },
 ]
+
