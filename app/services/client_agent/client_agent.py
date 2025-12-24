@@ -1,7 +1,6 @@
 import json
 from typing import Any, Dict, Optional
 from uuid import uuid4
-from openai import OpenAI
 from pydantic import BaseModel
 from app.services.agent_base import AgentBase
 from app.services.orchestrator.memory import ConversationManager
@@ -60,14 +59,15 @@ class ClientAgent(AgentBase):
             response = self.client.responses.parse(
                 model="gpt-5-nano",
                 input=self.user_message,
-                instructions="Categorize the user message into ONE of the following intents: SOCIAL, EMERGENCY, TASK (TASK includes asking for horoscope)",
+                instructions="Categorize the user message into ONE of the following intents: SOCIAL, EMERGENCY, TASK (TASK includes asking for horoscope and calculating a route)",
+                text_format= CategorizeResponse,
             )
 
             print("user intent:")
-            print(response.output[1].content[0].text)
+            print(response.output[1].content[0].parsed.intent)
 
                 
-            return response.output[1].content[0].text
+            return response.output[1].content[0].parsed.intent
         
         except Exception as e:
             print(f"Server Error In categorize message: {e}")
@@ -96,6 +96,7 @@ class ClientAgent(AgentBase):
     def _handle_task_message(self):
         try:
 
+            print("TASK FUNCTION ENTERED")
             #add user message to DB
             self.memory.add_message(self.user_message, "user")
 
@@ -136,11 +137,3 @@ class ClientAgent(AgentBase):
             
         except Exception as e:
             print(f"Server Error In handle task: {e}")
-    
-
-    
-client = OpenAI()
-
-# client_agent = ClientAgent("Client_Agent", client, "user_id", chat_id="Chat_id", user_message="Hi! How are you?")
-
-# client_agent.handle_message()
