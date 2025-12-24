@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 import uuid
 from dotenv import load_dotenv
@@ -65,6 +66,17 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: str):
     try:
         while True:
             data = await websocket.receive_text()
+
+            try:
+                packet = json.loads(data)
+                if packet['reciever'] == "ORCHESTRATOR_AGENT":
+
+                    #dispatch task to orchestrator agent
+                    r.lpush("orchestrator_queue", data)
+
+            except Exception as e:
+                print(f"Error handling data: {e}")
+
             await websocket_manager.send_message(chat_id=chat_id, message=data)
 
     except WebSocketDisconnect:
