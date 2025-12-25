@@ -79,7 +79,7 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
         route = data['routes'][0]
 
         #get encoded polyline for the location tracking
-        encodedPolyline = route.get('legs', {}).get('polyline').get('encodedPolyline')
+        encodedPolyline = route.get("legs", [])[0].get('polyline', {}).get('encodedPolyline')
 
         #get fastest route metadata
         route_summary = {
