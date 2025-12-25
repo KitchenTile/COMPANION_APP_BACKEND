@@ -131,6 +131,10 @@ class OrchestratorAgent(AgentBase):
                     # check if tool returned a Route Object
                     if isinstance(result, dict) and result.get('action') == "display_route":
                         # We need to inform the user AND send the polyline
+                        print("in the route direction conditional")
+                                                    
+                        self.memory.add_message(result['text'], "assistant")
+
                         
                         #save text to memory so LLM knows what happened
                         self.memory.add_process_log(
