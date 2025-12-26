@@ -1,3 +1,4 @@
+import re
 import requests
 import dotenv
 import os
@@ -53,14 +54,29 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
         "X-Goog-FieldMask": "routes.*"
     }
 
+    #check if a given location is an address or its coords
+    def is_coords(location: str):
+        x = re.search("^\s*([+-]?(?:90(?:\.0+)?|[0-8]?\d(?:\.\d+)?))\s*,?\s*([+-]?(?:180(?:\.0+)?|1[0-7]\d(?:\.\d+)?|\d{1,2}(?:\.\d+)?))\s*$", location)
+
+        #return correct API dict
+        if x:
+            return {
+                "location":{
+                    "latLng":{
+                        "latitude": location.split(',')[0],
+                        "longitude": location.split(',')[1].strip()
+                    }
+                }
+            }   
+        else:
+            return {
+                "address": location
+            }
+
     try:
         data = {
-            "origin": {
-                "address": origin
-                },
-            "destination": {
-                "address": destination
-                },
+            "origin": is_coords(origin),
+            "destination": is_coords(destination),
             "travelMode": "TRANSIT",
             "computeAlternativeRoutes": False,
             "transitPreferences": {
@@ -68,6 +84,7 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
                 "allowedTravelModes": transport_mode
             }
         }
+
 
         response = requests.post('https://routes.googleapis.com/directions/v2:computeRoutes', headers=headers, json=data)    
 
@@ -103,9 +120,10 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
                         f"Take {line.get('vehicle', {}).get('name', {}).get('text')} "
                         f"{line.get('nameShort', line.get('name'))} "
                         f"towards {transit.get('headsign')} "
-                        f"for {transit.get('stopCount')} stops ({step.get("localizedValues", {}).get("staticDuration", {}).get("text")}), "
-                        f"from {transit.get("stopDetails", {}).get("departureStop", {}).get("name")} "
-                        f"until {transit.get("stopDetails", {}).get("arrivalStop", {}).get("name")}."
+                        f"for {transit.get('stopCount')} stops "
+                        f"({step.get('localizedValues', {}).get('staticDuration', {}).get('text')}), "
+                        f"from {transit.get('stopDetails', {}).get('departureStop', {}).get('name')} "
+                        f"until {transit.get('stopDetails', {}).get('arrivalStop', {}).get('name')}."
                     )
                     
 
@@ -114,8 +132,9 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
                     nav = step["navigationInstruction"]
 
                     step_instruction = (
-                        f"Step {index + 1}: {nav.get("instructions", "Walk")}. "
-                        f"It should take {step.get("localizedValues", {}).get("staticDuration", {}).get("text")} ({step.get("localizedValues", {}).get("distance", {}).get("text")})"
+                        f"Step {index + 1}: {nav.get('instructions', 'Walk')}. "
+                        f"It should take {step.get('localizedValues', {}).get('staticDuration', {}).get('text')} "
+                        f"({step.get('localizedValues', {}).get('distance', {}).get('text')})"
                     )
                 
                 route_summary["steps"].append(step_instruction)
