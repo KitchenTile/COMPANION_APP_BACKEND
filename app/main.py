@@ -70,8 +70,9 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: str):
             print(data)
             try:
                 packet = json.loads(data)
+
                 if packet.get("receiver") == "ORCHESTRATOR_AGENT":
-                    print(f"sending task to {packet.receiver}")
+                    print(f"sending task to {packet.get("receiver")}")
 
                     #dispatch task to orchestrator agent
                     r.lpush("orchestrator_queue", data)
