@@ -1,8 +1,11 @@
 import json
+import os
 from typing import Optional
 import uuid
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from authlib.integrations.starlette_client import OAuth, OAuthError
+from starlette.middleware.sessions import SessionMiddleware
 from openai import OpenAI
 from pydantic import BaseModel, Field
 import redis
@@ -38,6 +41,45 @@ class QueryResponse(BaseModel):
     task_id: str = Field(
         description="current task id"
     )
+
+app.add_middleware(SessionMiddleware, secret_key="secretsecret")
+
+
+# OAuth Setup
+oauth = OAuth()
+oauth.register(
+    name="google",
+    client_id=os.getenv("OAUTH_CLIENT_ID"),
+    client_secret=os.getenv("OAUTH_CLIENT_SECRET"),
+    authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
+    access_token_url="https://oauth2.googleapis.com/token",
+    refresh_token_url="https://oauth2.googleapis.com/token",
+    jwks_uri="https://www.googleapis.com/oauth2/v3/certs",
+    client_kwargs={
+        "scope": "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
+        "access_type": "offline",
+        "prompt": "consent",
+    },
+)
+
+# JWT Configurations
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+ALGORITHM = "HS256"
+
+
+@app.get('/gmailLogin')
+async def gmail_login(request: Request):
+    url = request.url_for('gmail_auth')
+    return await oauth.google.authorize_redirect(request, url)
+
+@app.get('/oauth/google/callback')
+async def gmail_auth(request: Request):
+    try:
+        token = await oauth.google.authorize_access_token(request)
+    except OAuthError as e:
+        print(f"error: {e}")
+
+
 
 websocket_manager = WebsocketManager()
 
