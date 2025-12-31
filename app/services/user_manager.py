@@ -25,6 +25,18 @@ class CredentialManager:
         
         except Exception as e:
             return f"error adding user token to database: {e}"
+        
+    def get_google_tokens(self, user_id):
+        try:
+            # if there's a user id, then add a credentials row for it
+            response = self.client.table("user_credentials").select("google_access_token, google_refresh_token").eq("user_id", user_id).single().execute()
+            print("retrieved tokens")
+            print(response.data)
+            return response.data
+        
+        except Exception as e:
+            return f"error adding user token to database: {e}"
+
 
 
     
