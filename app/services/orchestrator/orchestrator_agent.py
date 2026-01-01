@@ -30,6 +30,16 @@ class OrchestratorAgent(AgentBase):
         if (packet.get("pending_tool_id") == None):
             # Log the user's start
             self.memory.add_process_log(self.task_id, "user", user_text)
+
+            # if the message has lost coords
+            if packet["content"].get("lost_coords") != None:
+                print("THERE'S COORDS")
+                lost_coords = packet['content'].get("lost_coords")
+                destination = packet['content'].get("destination")
+
+                # add lost coords to the lost coords database
+                self.memory.add_lost_coords(lost_coords, destination, self.user_id)
+                
         else:
             #get tool id
             tool_id = packet.get("pending_tool_id")
@@ -134,7 +144,6 @@ class OrchestratorAgent(AgentBase):
                         print("in the route direction conditional")
                                                     
                         self.memory.add_message(result['text'], "assistant")
-
                         
                         #save text to memory so LLM knows what happened
                         self.memory.add_process_log(
@@ -184,5 +193,5 @@ class OrchestratorAgent(AgentBase):
                     "user_id": self.user_id,
                     "task_id": self.task_id,
 
-                    "content": {"message": self.user_message},
+                    "content": {"message": final_content},
                 }
