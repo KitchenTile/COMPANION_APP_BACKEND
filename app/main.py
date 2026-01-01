@@ -1,17 +1,21 @@
 import json
 import os
+import secrets
 from typing import Optional
 import uuid
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from authlib.integrations.starlette_client import OAuth, OAuthError
+from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from openai import OpenAI
 from pydantic import BaseModel, Field
 import redis
 from app.services.client_agent.client_agent import ClientAgent
 from app.services.orchestrator.memory import ConversationManager
+from app.services.user_manager import CredentialManager
 from app.utils.websocket_manager import WebsocketManager
+
 
 
 load_dotenv()
@@ -42,6 +46,15 @@ class QueryResponse(BaseModel):
         description="current task id"
     )
 
+class userLogin(BaseModel):
+    email: str
+    password: str
+
+class userSignUp(BaseModel):
+    email: str
+    password: str
+    name: str
+
 app.add_middleware(SessionMiddleware, secret_key="secretsecret")
 
 
@@ -49,16 +62,19 @@ app.add_middleware(SessionMiddleware, secret_key="secretsecret")
 oauth = OAuth()
 oauth.register(
     name="google",
-    client_id=os.getenv("OAUTH_CLIENT_ID"),
-    client_secret=os.getenv("OAUTH_CLIENT_SECRET"),
+    client_id=os.getenv("OAUTH_CLIENT2_ID"),
+    client_secret=os.getenv("OAUTH_CLIENT2_SECRET"),
     authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
     access_token_url="https://oauth2.googleapis.com/token",
     refresh_token_url="https://oauth2.googleapis.com/token",
     jwks_uri="https://www.googleapis.com/oauth2/v3/certs",
     client_kwargs={
-        "scope": "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
+        "scope": "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify",
+    },
+    authorize_params={
         "access_type": "offline",
         "prompt": "consent",
+        "include_granted_scopes": "false",
     },
 )
 
@@ -66,20 +82,58 @@ oauth.register(
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 
-
 @app.get('/gmailLogin')
-async def gmail_login(request: Request):
+async def gmail_login(request: Request, user_id: str):
+
+    # save user_id to the session cookie
+    request.session['user_id'] = user_id
+
+    print('user_id from session')
+    print(request.session['user_id'])
+
+    #redirect url for OAuth
     url = request.url_for('gmail_auth')
+
+    #when gmail login endpoint is hit redirect to callback endpoint
     return await oauth.google.authorize_redirect(request, url)
 
 @app.get('/oauth/google/callback')
 async def gmail_auth(request: Request):
+
+    user_id = request.session.get("user_id")
+
+    print("user Id callback")
+    print(user_id)
+
+    #iniitiate user manager instance with user id
+    credential_manager = CredentialManager()
+
     try:
+        #authlib performs post request and exchanges the access token for our token dict
+        #including access token and refresh token
         token = await oauth.google.authorize_access_token(request)
+        print("token")
+        print(token)
+        print(token.get("access_token"))
+
+        if token:
+            print(" -- adding token to database -- ")
+            #add tokens to db
+            credential_manager.add_google_tokens(user_id, token.get("access_token"), token.get('refresh_token'))
+
+
+
     except OAuthError as e:
         print(f"error: {e}")
 
+    session = secrets.token_urlsafe(32)
 
+    print(session)
+
+    #return to the app when auth happens
+    redirect_url = f"aicompanion://auth?status=success&user_id={user_id}"
+
+    return RedirectResponse(redirect_url)
 
 websocket_manager = WebsocketManager()
 
