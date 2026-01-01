@@ -1,6 +1,7 @@
 import os
 from supabase import Client, create_client
 from datetime import datetime, timezone
+from uuid import uuid4
 
 class ConversationManager:
     def __init__(self, chat_id:str, user_id: str):
@@ -104,3 +105,48 @@ class ConversationManager:
                 })
 
         return messages
+
+    # add coords where user's get lost at to the DB
+    def add_lost_coords(self, lost_coords, destination, user_id):
+        # check if DB has an entry from user
+        response = (
+            self.client.table("user_derail_coords")
+            .select("*").eq("user_id", user_id)
+            .execute()
+        )
+
+        # if there is a row for the user
+        if response.data != []:
+            print(response)
+            try:
+                new_coords_obj = {
+                        "lost_coords": lost_coords,
+                        "id": str(uuid4()),
+                        "lost_coords": lost_coords,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "destination": destination
+                    }
+                # we add a new entry in the coords column
+
+                self.client.rpc("add_lost_coord", {
+                    "p_user_id": user_id,
+                    "p_new_coord": new_coords_obj,
+                }).execute();
+
+            except Exception as e:
+                print(f"Error adding coords to table: {e}")
+        else:
+            # if there's no record, create one with the first coords as the starting array
+            try:
+                self.client.table("user_derail_coords").insert({
+                "id": str(uuid4()),
+                    "user_id": user_id,
+                    "lost_coords": [{
+                        "id": str(uuid4()),
+                        "lost_coords": lost_coords,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "destination": destination
+                    }]
+                }).execute()
+            except Exception as e:
+                print(f"Error adding coords to table: {e}")
