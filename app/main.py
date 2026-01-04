@@ -119,8 +119,10 @@ async def gmail_auth(request: Request):
         if token:
             print(" -- adding token to database -- ")
             #add tokens to db
-            credential_manager.add_google_tokens(user_id, token.get("access_token"), token.get('refresh_token'))
+            credential_manager.add_google_tokens(user_id, token.get("access_token"), token.get('refresh_token'), token.get('expires_at'))
 
+        #clear session
+        request.session.pop('user_id', None)
 
 
     except OAuthError as e:
