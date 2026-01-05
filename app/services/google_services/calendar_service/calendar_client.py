@@ -20,8 +20,39 @@ class CalendarClient:
     def _get_service(self):
         return self.service.create_client()
     
-    def do_something(self):
+    def add_event(self, event_obj):
         #create service
         service = self._get_service()
 
-        return
+        # create event
+        try: 
+            event = service.events().insert(
+                calendarId="primary",
+                body=event_obj
+            ).execute()
+
+            print(event)
+
+        except Exception as e:
+            print(e)
+
+        # return event
+    
+    def get_events(self):
+        #create service
+        service = self._get_service()
+
+        # create event
+        try: 
+            events = service.events().list(
+                calendarId="primary"
+            ).execute()
+
+            print(events)
+
+        except Exception as e:
+            print(e)
+
+        # return event
+
+        
