@@ -22,7 +22,9 @@ load_dotenv()
 
 app = FastAPI()
 
-r = redis.Redis(host='localhost', port=6379, db=0)
+redis_host = os.getenv("REDIS_HOST", "localhost")
+
+r = redis.Redis(host=redis_host, port=6379, db=0)
 
 
 # Pydantic model for incoming JSON body
@@ -118,6 +120,7 @@ async def gmail_auth(request: Request):
 
         if token:
             print(" -- adding token to database -- ")
+
             #add tokens to db
             credential_manager.add_google_tokens(user_id, token.get("access_token"), token.get('refresh_token'), token.get('expires_at'))
 
@@ -170,7 +173,7 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: str):
                 packet = json.loads(data)
 
                 if packet.get("receiver") == "ORCHESTRATOR_AGENT":
-                    print(f"sending task to {packet.get("receiver")}")
+                    print(f"sending task to {packet.get('receiver')}")
 
                     #dispatch task to orchestrator agent
                     r.lpush("orchestrator_queue", data)

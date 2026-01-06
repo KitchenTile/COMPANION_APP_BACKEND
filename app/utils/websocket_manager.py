@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict
 import asyncio
 import redis.asyncio as aioredis
@@ -5,7 +6,7 @@ import json
 from fastapi import WebSocket
 
 class RedisPubSubManager:
-    def __init__(self, host: str = "localhost", port: int = 6379):
+    def __init__(self, host: str = os.getenv("REDIS_HOST", "localhost"), port: int = 6379):
         self.host = host
         self.port = port
         self.pubsub = None

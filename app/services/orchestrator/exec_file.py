@@ -1,4 +1,5 @@
 import json
+import os
 from dotenv import load_dotenv
 from openai import OpenAI
 import redis
@@ -11,7 +12,9 @@ load_dotenv()
 
 client = OpenAI()
 
-r = redis.Redis(host='localhost', port=6379, db=0)
+redis_host = os.getenv("REDIS_HOST", "localhost")
+
+r = redis.Redis(host=redis_host, port=6379, db=0)
 
 
 while True:
