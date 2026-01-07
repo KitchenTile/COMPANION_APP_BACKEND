@@ -27,11 +27,31 @@ class GmailClient:
     def get_emails(self):
         service = self._get_service()
 
-        result = service.users().messages().list(
-            userId="me",
-            maxResults=10
-        ).execute()
+        # get the last 10 emails
+        try:
+            result = service.users().messages().list(
+                userId="me",
+                labelIds=["INBOX"],
+                maxResults=10
+            ).execute()
 
-        print(result)
+            messages = result.get("messages", [])
 
-        return result.get("messages", [])
+            if not messages:
+                print("No messages found.")
+                return
+            
+            print(messages)
+            
+            for message in messages:
+                single_email = service.users().messages().get(userId="me", id=message.get("id")).execute()
+
+                print("single email object")
+                print(single_email)
+
+                print(f'subject: {single_email['snippet']}')
+
+            return messages
+        
+        except Exception as e:
+            print(e)
