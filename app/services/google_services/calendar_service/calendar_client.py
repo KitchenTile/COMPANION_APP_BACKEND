@@ -36,8 +36,6 @@ class CalendarClient:
 
         except Exception as e:
             print(e)
-
-        # return event
     
     #gets all future events
     def get_all_events(self):
@@ -59,8 +57,6 @@ class CalendarClient:
 
         except Exception as e:
             print(e)
-
-        # return event
 
     def get_single_event(self, event_id: str):
         #create service

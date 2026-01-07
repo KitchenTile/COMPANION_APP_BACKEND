@@ -71,7 +71,7 @@ oauth.register(
     refresh_token_url="https://oauth2.googleapis.com/token",
     jwks_uri="https://www.googleapis.com/oauth2/v3/certs",
     client_kwargs={
-        "scope": "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify",
+        "scope": "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events",
     },
     authorize_params={
         "access_type": "offline",
