@@ -84,10 +84,7 @@ class GmailClient:
                 print("No messages found.")
                 return
             
-            print(messages)
-
             emails = []
-            
             for message in messages:
                 single_email = service.users().messages().get(userId="me", id=message.get("id")).execute()
 
@@ -104,8 +101,6 @@ class GmailClient:
                 print(single_email_obj)
 
                 emails.append(single_email_obj)
-
-                print(f'subject: {single_email["snippet"]}')
 
             return emails
         
