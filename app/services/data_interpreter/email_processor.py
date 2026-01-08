@@ -1,40 +1,52 @@
+import os
+import uuid
+from pydantic import BaseModel
+from realtime import Any
+from supabase import Client, create_client
 from services.google_services.gmail_service.gmail_client import GmailClient
 from services.user_manager import CredentialManager
 from sentence_transformers import SentenceTransformer
 
+# class email(BaseModel):
+#     id: str
+#     headers: dict[str, Any]
+#     body: str
+
 class EmailChunker:
-    def __init__(self, user_id: str, chunk_size: int = 500):
+    def __init__(self, user_id: str, emails ,chunk_size: int = 500):
 
         self.user_id = user_id
         self.credential_manager = CredentialManager()
         self.chunk_size = chunk_size
+        self.emails = emails
 
 
     def chunk_emails(self):
-        gmail_client = GmailClient(self.user_id, self.credential_manager)
 
         # array of email objects
-        emails = gmail_client.get_emails()
+        # print("emails")
 
-        print("emails")
-
-        print(emails)
+        # print(self.emails)
 
         #chunk and add email bodies to array
-        for email in emails:
+        for email in self.emails:
             email_body = email.get("body")
             chunked_email_body = self._recursive_chunker(email_body)
 
             email["body"] = chunked_email_body
-            print(len(chunked_email_body))
+            # print(len(chunked_email_body))
 
-            print("new email")
-            print(email)
+            # print("new email")
+            # print(email)
 
 
-        return emails
+        return self.emails
 
     def _recursive_chunker(self, text: str):
+
+        if not text:
+            return []
+
         text_separators = [
             "\n\n",
             "\n",
@@ -100,3 +112,46 @@ class EmailEmbedder:
             normalize_embeddings=True
         ).tolist()
 
+class EmailUpserter:
+    def __init__(self, user_id):
+        self.url = os.environ.get("SUPABASE_URL")
+        self.key = os.environ.get("SUPABASE_API_KEY")
+        
+        self.client: Client = create_client(self.url, self.key)
+
+        self.user_id = user_id
+
+    def upsert_email(self, email):
+        try:
+            headers = email.get("headers")
+            # if there's a user id, then add a credentials row for it
+            response = self.client.table("emails").upsert({
+                "id": email.get("id"),
+                "user_id": self.user_id,
+                "subject": headers.get("subject"),
+                "sender": headers.get("sender"),
+                "date": headers.get("date"),
+                "gmail_message_id": headers.get("message_id"),
+                "thread_id": headers.get("thread_id"),
+            }).execute()
+
+            return response
+
+        except Exception as e:
+            print(e)
+
+    def upsert_chunk(self, chunk, chunk_index, email_id, embedding):
+        print(chunk, chunk_index, email_id)
+        try:
+            response = self.client.table("email_chunks").upsert({
+                "id": str(uuid.uuid4()),
+                "user_id": self.user_id,
+                "email_id": email_id,
+                "chunk_content": chunk,
+                "embedding": embedding,
+                "chunk_order": chunk_index
+            }).execute()
+
+            return response
+        except Exception as e:
+            print(e)
