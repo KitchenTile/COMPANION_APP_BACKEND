@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from realtime import Any
 from supabase import Client, create_client
 from services.google_services.gmail_service.gmail_client import GmailClient
-from services.user_manager import CredentialManager
 from sentence_transformers import SentenceTransformer
 
 # class email(BaseModel):
@@ -13,34 +12,24 @@ from sentence_transformers import SentenceTransformer
 #     body: str
 
 class EmailChunker:
-    def __init__(self, user_id: str, emails ,chunk_size: int = 500):
-
+    def __init__(self, user_id: str, chunk_size: int = 500):
         self.user_id = user_id
-        self.credential_manager = CredentialManager()
         self.chunk_size = chunk_size
-        self.emails = emails
 
 
-    def chunk_emails(self):
-
-        # array of email objects
-        # print("emails")
-
-        # print(self.emails)
+    def chunk_emails(self, emails):
 
         #chunk and add email bodies to array
-        for email in self.emails:
+        for email in emails:
             email_body = email.get("body")
             chunked_email_body = self._recursive_chunker(email_body)
 
             email["body"] = chunked_email_body
             # print(len(chunked_email_body))
-
             # print("new email")
             # print(email)
 
-
-        return self.emails
+        return emails
 
     def _recursive_chunker(self, text: str):
 
@@ -121,10 +110,10 @@ class EmailUpserter:
 
         self.user_id = user_id
 
+    # upload email metadata
     def upsert_email(self, email):
         try:
             headers = email.get("headers")
-            # if there's a user id, then add a credentials row for it
             response = self.client.table("emails").upsert({
                 "id": email.get("id"),
                 "user_id": self.user_id,
@@ -140,8 +129,8 @@ class EmailUpserter:
         except Exception as e:
             print(e)
 
+    #upload chunk data
     def upsert_chunk(self, chunk, chunk_index, email_id, embedding):
-        print(chunk, chunk_index, email_id)
         try:
             response = self.client.table("email_chunks").upsert({
                 "id": str(uuid.uuid4()),
@@ -150,8 +139,22 @@ class EmailUpserter:
                 "chunk_content": chunk,
                 "embedding": embedding,
                 "chunk_order": chunk_index
-            }).execute()
+            },
+            on_conflict="email_id, chunk_order"
+            ).execute()
 
             return response
         except Exception as e:
             print(e)
+
+    def filter_emails(self, email_ids):
+        if not email_ids:
+            return set()
+        try:
+            response = self.client.table("emails").select('gmail_message_id').in_("gmail_message_id", email_ids).execute()
+
+            return {row['gmail_message_id'] for row in response.data}
+        
+        except Exception as e:
+            print(f"Error checking existing IDs: {e}")
+            return set()
