@@ -1,5 +1,3 @@
-
-
 from services.google_services.google_service_builder import GoogleServiceBuilder
 import base64
 
@@ -67,16 +65,16 @@ class GmailClient:
 
         return (final_headers, final_body)
     
-    def get_emails(self):
+    def get_email_ids(self):
         service = self._get_service()
 
-        # get the last 10 emails
+        # get the last 10 email ids
         try:
             result = service.users().messages().list(
-                userId="me",
-                labelIds=["INBOX"],
-                maxResults=10
-            ).execute()
+                    userId="me",
+                    labelIds=["INBOX"],
+                    maxResults=10
+                ).execute()
 
             messages = result.get("messages", [])
 
@@ -84,15 +82,32 @@ class GmailClient:
                 print("No messages found.")
                 return
             
-            emails = []
+            #get just the ids
+            message_ids = []
             for message in messages:
-                single_email = service.users().messages().get(userId="me", id=message.get("id")).execute()
+                message_ids.append(message.get('id'))
+            
+            return message_ids
+        except Exception as e:
+            print(e)
+    
+    def get_emails(self, email_ids: list[str]):
+        service = self._get_service()
+
+        if len(email_ids) == 0:
+            return None
+
+        # from the email ids, get and format email objects
+        try:
+            emails = []
+            for i in email_ids:
+                single_email = service.users().messages().get(userId="me", id=i).execute()
 
                 # get email contents for the returned email object
                 headers, body = self._format_email(single_email)
 
                 single_email_obj = {
-                    "id": message.get("id"),
+                    "id": i,
                     "headers": headers,
                     "body": body.get("body"),
                 }
