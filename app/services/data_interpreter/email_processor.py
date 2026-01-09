@@ -151,9 +151,11 @@ class EmailUpserter:
         if not email_ids:
             return set()
         try:
-            response = self.client.table("emails").select('gmail_message_id').in_("gmail_message_id", email_ids).execute()
+            response = self.client.table("emails").select('id').in_("id", email_ids).execute()
 
-            return {row['gmail_message_id'] for row in response.data}
+            print(response)
+            
+            return {row['id'] for row in response.data}
         
         except Exception as e:
             print(f"Error checking existing IDs: {e}")
