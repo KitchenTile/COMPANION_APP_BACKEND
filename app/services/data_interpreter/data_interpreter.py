@@ -1,4 +1,4 @@
-from app.services.google_services.gmail_service.gmail_client import GmailClient
+from services.google_services.gmail_service.gmail_client import GmailClient
 from services.data_interpreter.email_processor import EmailChunker, EmailEmbedder, EmailUpserter
 from services.user_manager import CredentialManager
 
@@ -19,15 +19,18 @@ class EmailProcessingPipeline:
     
     def run(self):
         #get email_ids
-        
-        #get emails 
         email_ids = self.gmail_service.get_email_ids()
 
         #filter the duplicated ids
         duplicate_email_ids = self.email_upserter.filter_emails(email_ids)
 
+        print("email_ids")
+        print(email_ids)
+
         #get emails that are not inclided in our duplicated ids
         new_email_ids = [id for id in email_ids if id not in duplicate_email_ids]
+
+        print(f"new ids: {new_email_ids}")
 
         if not new_email_ids:
             print("No new emails to upload")
@@ -45,7 +48,6 @@ class EmailProcessingPipeline:
             except Exception as e:
                 print(f"Failed to process email {email.get('id')}: {e}")
 
-        pass
 
     def process_email(self, email):
         #email's chunks
