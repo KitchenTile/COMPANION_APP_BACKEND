@@ -147,7 +147,7 @@ class EmailUpserter:
         except Exception as e:
             print(e)
 
-    def filter_emails(self, email_ids):
+    def filter_email_ids(self, email_ids):
         if not email_ids:
             return set()
         try:
