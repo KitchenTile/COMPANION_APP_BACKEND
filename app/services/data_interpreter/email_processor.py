@@ -114,6 +114,8 @@ class EmailUpserter:
     def upsert_email(self, email):
         try:
             headers = email.get("headers")
+            appointment_details = email.get("appointment_details")
+
             response = self.client.table("emails").upsert({
                 "id": email.get("id"),
                 "user_id": self.user_id,
@@ -122,6 +124,11 @@ class EmailUpserter:
                 "date": headers.get("date"),
                 "gmail_message_id": headers.get("message_id"),
                 "thread_id": headers.get("thread_id"),
+                "location": appointment_details.get("location"),
+                "intent": appointment_details.get("intent"),
+                "summary": appointment_details.get("summary"),
+                "appointment_date_start": appointment_details.get("date_time_start"),
+                "appointment_date_end": appointment_details.get("date_time_end")
             }).execute()
 
             return response
