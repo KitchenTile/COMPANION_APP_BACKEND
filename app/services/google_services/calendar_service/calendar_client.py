@@ -87,7 +87,7 @@ class CalendarClient:
     def get_event_by_thread_id(self, thread_id: str):
         #create service
         service = self._get_service()
-
+        print("get_event_by_thread_id")
         # get event from event id
         try:
             events = (
@@ -99,6 +99,9 @@ class CalendarClient:
                 .execute()
             )
 
+            print(events)
+            print("--- events items id ---")
+            print(events.get("items")[0].get("id"))
             #change return statement to get the item from the event
             return events.get("items")[0].get("id")
         
