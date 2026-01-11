@@ -1,7 +1,11 @@
+from datetime import datetime, timedelta
 import json
+import os
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from supabase import Client, create_client
+from services.google_services.calendar_service.calendar_client import CalendarClient
 from services.google_services.gmail_service.gmail_client import GmailClient
 from services.data_interpreter.email_processor import EmailChunker, EmailEmbedder, EmailUpserter
 from services.user_manager import CredentialManager
@@ -9,7 +13,7 @@ from services.user_manager import CredentialManager
 class AppointmentFilter(BaseModel):
     id: str | None
     summary: str | None= Field(
-        description="A small sumary of the email, maximum 15 words."
+        description="A small sumary of the appointment information, maximum 15 words."
     )
     location: str | None = Field(
         description= "The address where the appointment is taking place at. This is just meant to be an address, NOT CLINIC OR HOSPITAL NAME",
@@ -81,6 +85,8 @@ class EmailIngestionPipeline:
                 self.process_email(email)
             except Exception as e:
                 print(f"Failed to process email {email.get('id')}: {e}")
+        
+        return appointment_emails
 
 
     def process_email(self, email):
@@ -99,9 +105,11 @@ class EmailIngestionPipeline:
             print(f"successfully addded email embeddings for email: {email.get('id')}")
     
 
+    # given an array of emails get appointent info and intent
     def filter_appointments(self, emails):
         prompt = f"""
-        Analyze these emails and only filter emails that are DEFINITELY medical appointment related.
+        Analyze these email and only filter emails that are DEFINITELY medical appointment related.
+        If emails have the same thread_id, they are related. If a later emails is of intent = "reschedule", use previous email to fill up information as you see fit while returning schemas for both emails.
         Ignore and do not return a json schema for generic newsletters or other emails. 
             
         Emails:
@@ -112,31 +120,104 @@ class EmailIngestionPipeline:
         response = self.client.responses.parse(
             model="gpt-5-mini",
             input=prompt,
-            text_format=AppointmentFilter,
+            text_format=AppoitmentFilterList,
         )
 
         response_model = response.output[1].content[0].parsed
 
         #if the list is empty there are no appoitnment emails
-        if len(response_model) == 0:
+        if not response_model.filtered_list:
             return None
 
         response_dump = response_model.model_dump()
 
         print(response_dump)
 
+        appointment_emails = []
         # add appointment details to the emails about appointments and pop the ones that are not
         for index, email in enumerate(emails):
             for response in response_dump.get("filtered_list"):
                 if email.get("id") == response.get("id"):
                     email["appointment_details"] = response
                     print(email)
+                    appointment_emails.append(email)
                     break
 
-            if not email.get("appointment_details"):
-                print(f"email {email.get("id")}, indexed {index}, is not about appointments")
-                emails.pop(index)
+        print("final emails with appointment info")
+        print(appointment_emails)
 
-        print(emails)
+        return appointment_emails
+    
 
-        return emails
+class CalendarEventManager:
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+        self.credential_manager = CredentialManager()
+
+        self.google_calendar_client = CalendarClient(self.user_id, self.credential_manager)
+        
+        self.url = os.environ.get("SUPABASE_URL")
+        self.key = os.environ.get("SUPABASE_API_KEY")
+        
+        self.client: Client = create_client(self.url, self.key)
+        
+    #go through appointment list and decide what to do based on intent
+    def manage_calendar_events(self, appointments):
+        for appointment in appointments:
+            appointmemt_thread_id = appointment.get("thread_id")
+            appointment_start_time = appointment.get("appointment_details").get("date_time_start")
+            appointment_end_time = appointment.get("appointment_details").get("date_time_end")
+
+            # if no end time make one 1hr after the event's beggining
+            if not appointment_end_time:
+                appointment_end_time = generate_end_time(appointment_start_time=appointment_start_time, time_added=1)
+
+            if appointment.get("intent") == "new":
+                # check for conflicting events with get_all_events
+                is_free = self.google_calendar_client.check_freebusy(appointment_start_time, appointment_end_time)
+
+                if is_free:
+                    # create new event
+                    event_obj = {
+                        "summary": appointment.get("appointment_details").get("summary"),
+                        "start": {"dateTime": appointment_start_time},
+                        "end": {"dateTime": appointment_end_time},
+                        "extendedProperties.private": {
+                            "thread_id": appointment.get("thread_id")
+                        },                        
+                    }
+
+                    self.google_calendar_client.add_event(event_obj)
+                else:
+                    return "CONFLICTING EVENTS FOUND"
+                    
+            if appointment.get("intent") == "reschedule":
+                #get event id with get_event_by_thread_id(thread_id) and edit it with edit_event(event_id, edit_obj)
+                event_id_to_edit = self.google_calendar_client.get_event_by_thread_id(appointmemt_thread_id)
+
+                event_obj = {
+                    "summary": appointment.get("appointment_details").get("summary"),
+                    "start": {"dateTime": appointment_start_time},
+                    "end": {"dateTime": appointment_end_time},
+                    "extendedProperties": {
+                        "private": {
+                            "thread_id": appointment.get("thread_id")
+                        }
+                    }                         
+                }
+                self.google_calendar_client.edit_event(event_id_to_edit, event_obj)
+
+            if appointment.get("intent") == "cancel":
+                # get event id with get_event_by_thread_id(event_id) and cancel it with cancel_event(event_id)
+                event_id_to_cancel = self.google_calendar_client.get_event_by_thread_id(appointmemt_thread_id)
+
+                self.google_calendar_client.delete_event(event_id_to_cancel)
+
+def generate_end_time(appointment_start_time, time_added):
+
+    start_time = datetime.fromisoformat(appointment_start_time.replace("Z", "+00:00"))
+    end_time = start_time + timedelta(hours=time_added)
+
+    end_str = end_time.isoformat().replace("+00:00", "Z")
+
+    return end_str
