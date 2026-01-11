@@ -4,10 +4,10 @@ from datetime import datetime, timezone
 
 
 class CalendarClient:
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str, credential_manager):
         self.user_id = user_id
         # define credential manager for separation of concerns
-        self.credential_manager = CredentialManager()
+        self.credential_manager = credential_manager
 
         # define scopes for service
         self.scopes = ["https://www.googleapis.com/auth/calendar.readonly",
@@ -58,21 +58,50 @@ class CalendarClient:
         except Exception as e:
             print(e)
 
-    def get_single_event(self, event_id: str):
+    def check_freebusy(self, time_min, time_max):
+        service = self._get_service()
+
+        body = {
+            "timeMin": time_min,
+            "timeMax": time_max,
+            "items": [
+                {"id": "primary"}
+            ]
+        }
+
+        try:
+            event_freebusy = service.freebusy().query(body=body).execute()
+
+            print(event_freebusy)
+
+            if len(event_freebusy['calendars']['primary']['busy']) == 0:
+                return True
+            else:
+                return False
+            
+        except Exception as e:
+            print(" --- event freebusy error --- ")
+            print(e)
+
+
+    def get_event_by_thread_id(self, thread_id: str):
         #create service
         service = self._get_service()
 
         # get event from event id
         try:
-            event = service.events().get(
-                calendarId="primary",
-                eventId=event_id
-            ).execute()
-
-            print(f"event {event_id}: {event}")
+            events = (
+                service.events()
+                .list(
+                    calendarId="primary",
+                    privateExtendedProperty=f"thread_id={thread_id}"
+                )
+                .execute()
+            )
 
             #change return statement to get the item from the event
-            return event
+            return events.get("items")[0].get("id")
+        
         except Exception as e:
             print(e)
 
