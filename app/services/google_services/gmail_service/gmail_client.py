@@ -9,9 +9,11 @@ class GmailClient:
         self.credential_manager = credential_manager
 
         # define scopes for service
-        self.scopes = ["https://www.googleapis.com/auth/gmail.readonly",
+        self.scopes = ["https://www.googleapis.com/auth/calendar.readonly",
+                       "https://www.googleapis.com/auth/calendar.events",
+                       "https://www.googleapis.com/auth/gmail.readonly",
                        "https://www.googleapis.com/auth/gmail.send", 
-                       "https://www.googleapis.com/auth/gmail.modify"
+                       "https://www.googleapis.com/auth/gmail.modify",
                        ]
         
         # create service from GSB class

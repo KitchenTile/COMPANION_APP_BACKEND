@@ -76,7 +76,7 @@ oauth.register(
     authorize_params={
         "access_type": "offline",
         "prompt": "consent",
-        "include_granted_scopes": "false",
+        "include_granted_scopes": "true",
     },
 )
 
