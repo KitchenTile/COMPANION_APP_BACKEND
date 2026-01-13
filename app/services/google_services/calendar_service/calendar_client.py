@@ -1,29 +1,13 @@
+from services.google_services.google_base_client import BaseGoogleClient
 from services.google_services.google_service_builder import GoogleServiceBuilder
 from services.user_manager import CredentialManager
 from datetime import datetime, timezone
 
 
-class CalendarClient:
-    def __init__(self, user_id: str, credential_manager):
-        self.user_id = user_id
-        # define credential manager for separation of concerns
-        self.credential_manager = credential_manager
-
-        # define scopes for service
-        self.scopes = ["https://www.googleapis.com/auth/calendar.readonly",
-                       "https://www.googleapis.com/auth/calendar.events",
-                       "https://www.googleapis.com/auth/gmail.readonly",
-                       "https://www.googleapis.com/auth/gmail.send", 
-                       "https://www.googleapis.com/auth/gmail.modify", 
-                       ]
-        
-        # create service from GSB class
-        self.service = GoogleServiceBuilder("calendar", "v3", self.credential_manager, self.user_id, self.scopes)
-
-
-    def _get_service(self):
-        return self.service.create_client()
-    
+class CalendarClient(BaseGoogleClient):
+    def __init__(self, user_id: str, credential_manager, service, scopes: list[str]):
+        super().__init__(user_id = user_id, credential_manager = credential_manager, service = service, scopes = scopes)
+  
     def add_event(self, event_obj):
         #create service
         service = self._get_service()

@@ -1,27 +1,10 @@
+from app.services.google_services.google_base_client import BaseGoogleClient
 from services.google_services.google_service_builder import GoogleServiceBuilder
 import base64
 
-class GmailClient:
-    def __init__(self, user_id: str, credential_manager):
-        self.user_id = user_id
-
-        # used to get user's tokens
-        self.credential_manager = credential_manager
-
-        # define scopes for service
-        self.scopes = ["https://www.googleapis.com/auth/calendar.readonly",
-                       "https://www.googleapis.com/auth/calendar.events",
-                       "https://www.googleapis.com/auth/gmail.readonly",
-                       "https://www.googleapis.com/auth/gmail.send", 
-                       "https://www.googleapis.com/auth/gmail.modify",
-                       ]
-        
-        # create service from GSB class
-        self.service = GoogleServiceBuilder("gmail", "v1", self.credential_manager, self.user_id, self.scopes)
-
-
-    def _get_service(self):
-        return self.service.create_client()
+class GmailClient(BaseGoogleClient):
+    def __init__(self, user_id: str, credential_manager, service, scopes):
+        super().__init__(user_id = user_id, credential_manager = credential_manager, service = service, scopes = scopes)
     
     # helper function to extract header information
     def _get_header(self, headers, name):
