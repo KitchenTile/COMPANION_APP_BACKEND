@@ -173,8 +173,9 @@ class CalendarEventManager:
         print("in manage calendar")
         print(appointments)
         for appointment in appointments:
-            appointmemt_thread_id = appointment.get("headers").get("thread_id")
+            appointment_thread_id = appointment.get("headers").get("thread_id")
             appointment_start_time = appointment.get("appointment_details").get("date_time_start")
+            appointment_summary = appointment.get("appointment_details").get("summary")
             appointment_end_time = appointment.get("appointment_details").get("date_time_end")
 
             # if no end time make one 1hr after the event's beggining
@@ -182,57 +183,69 @@ class CalendarEventManager:
                 appointment_end_time = generate_end_time(appointment_start_time=appointment_start_time, time_added=1)
 
             if appointment.get("appointment_details").get("intent") == "new":
-                print("NEW APPOINTMENT")
-                # check for conflicting events with get_all_events
-                is_free = self.google_calendar_client.check_freebusy(appointment_start_time, appointment_end_time)
-
-                if is_free:
-                    # create new event
-                    event_obj = {
-                        "summary": appointment.get("appointment_details").get("summary"),
-                        "start": {"dateTime": appointment_start_time},
-                        "end": {"dateTime": appointment_end_time},
-                        "extendedProperties": {
-                            "private": {
-                                "thread_id": appointmemt_thread_id
-                            }
-                        }                        
-                    }
-                    try:
-                        self.google_calendar_client.add_event(event_obj)
-                        print("CREATED NEW APPOINTMENT")
-                    except Exception as e:
-                        print(e)
-
-                else:
-                    print("CONFLICTING EVENTS FOUND")
+                self._create_new_appointment_event(appointment_summary=appointment_summary, appointment_end_time=appointment_end_time, appointment_start_time=appointment_start_time, appointment_thread_id=appointment_thread_id)
                     
             if appointment.get("appointment_details").get("intent") == "reschedule":
-                print("RESCHEDULE APPOINTMENT")
-                print(appointmemt_thread_id)
-                #get event id with get_event_by_thread_id(thread_id) and edit it with edit_event(event_id, edit_obj)
-                event_id_to_edit = self.google_calendar_client.get_event_by_thread_id(appointmemt_thread_id)
-
-                event_obj = {
-                    "summary": appointment.get("appointment_details").get("summary"),
-                    "start": {"dateTime": appointment_start_time},
-                    "end": {"dateTime": appointment_end_time},
-                    "extendedProperties": {
-                        "private": {
-                            "thread_id": appointmemt_thread_id
-                        }
-                    }                         
-                }
-                self.google_calendar_client.edit_event(event_id_to_edit, event_obj)
+                self._reschedule_appointment(appointment_summary=appointment_summary, appointment_end_time=appointment_end_time, appointment_start_time=appointment_start_time, appointment_thread_id=appointment_thread_id)
 
             if appointment.get("appointment_details").get("intent") == "cancel":
-                print("CANCEL APPOINTMENT")
-                print(appointmemt_thread_id)
-                # get event id with get_event_by_thread_id(event_id) and cancel it with cancel_event(event_id)
-                event_id_to_cancel = self.google_calendar_client.get_event_by_thread_id(appointmemt_thread_id)
+                self._cancel_appointment(appointment_thread_id)
 
-                print(event_id_to_cancel)
-                self.google_calendar_client.delete_event(event_id_to_cancel)
+
+    def _create_new_appointment_event(self, appointment_start_time, appointment_end_time, appointment_summary, appointment_thread_id):
+        print("NEW APPOINTMENT")
+
+        # check for conflicting events with get_all_events
+        is_free = self.google_calendar_client.check_freebusy(appointment_start_time, appointment_end_time)
+
+        if is_free:
+            # create new event
+            event_obj = {
+                "summary": appointment_summary,
+                "start": {"dateTime": appointment_start_time},
+                "end": {"dateTime": appointment_end_time},
+                "extendedProperties": {
+                    "private": {
+                        "thread_id": appointment_thread_id
+                    }
+                }                        
+            }
+            try:
+                self.google_calendar_client.add_event(event_obj)
+                print("CREATED NEW APPOINTMENT")
+            except Exception as e:
+                print(e)
+
+        else:
+            print("CONFLICTING EVENTS FOUND")
+
+    def _reschedule_appointment(self, appointment_summary, appointment_start_time, appointment_end_time, appointment_thread_id):
+        #get event id with get_event_by_thread_id(thread_id) and edit it with edit_event(event_id, edit_obj)
+        print("RESCHEDULE APPOINTMENT")
+
+        event_id_to_edit = self.google_calendar_client.get_event_by_thread_id(appointment_thread_id)
+
+        event_obj = {
+            "summary": appointment_summary,
+            "start": {"dateTime": appointment_start_time},
+            "end": {"dateTime": appointment_end_time},
+            "extendedProperties": {
+                "private": {
+                    "thread_id": appointment_thread_id
+                }
+            }                         
+        }
+        self.google_calendar_client.edit_event(event_id_to_edit, event_obj)
+
+
+    def _cancel_appointment(self, appointment_thread_id: str):
+        print("CANCEL APPOINTMENT")
+        # get event id with get_event_by_thread_id(event_id) and cancel it with cancel_event(event_id)
+        event_id_to_cancel = self.google_calendar_client.get_event_by_thread_id(appointment_thread_id)
+
+        print(event_id_to_cancel)
+        self.google_calendar_client.delete_event(event_id_to_cancel)
+
 
 def generate_end_time(appointment_start_time, time_added):
 
