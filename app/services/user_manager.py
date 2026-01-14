@@ -48,8 +48,3 @@ class CredentialManager:
         
         except Exception as e:
             return f"error adding user token to database: {e}"
-
-
-
-    
-    
