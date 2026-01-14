@@ -1,10 +1,24 @@
 from app.services.google_services.google_base_client import BaseGoogleClient
-from services.google_services.google_service_builder import GoogleServiceBuilder
 import base64
 
 class GmailClient(BaseGoogleClient):
     def __init__(self, user_id: str, credential_manager, service, scopes):
         super().__init__(user_id = user_id, credential_manager = credential_manager, service = service, scopes = scopes)
+
+    
+    def watch_inbox(self):
+        service = self._get_service()
+
+        request_body = {
+            'labelIds': ['INBOX'],
+            'topicName': 'projects/trans-mind-481822-k1/topics/ai-companion-app'
+        }
+        
+        try: 
+            service.users().watch(userId="me", body=request_body).execute()
+        except Exception as e:
+            print(e)
+        
     
     # helper function to extract header information
     def _get_header(self, headers, name):
@@ -97,8 +111,6 @@ class GmailClient(BaseGoogleClient):
                     "body": body.get("body"),
                 }
 
-                # print("single email object")
-                # print(single_email_obj)
 
                 emails.append(single_email_obj)
 
