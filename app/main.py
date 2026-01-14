@@ -1,19 +1,23 @@
+import base64
 import json
 import os
 import secrets
 from typing import Optional
 import uuid
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from authlib.integrations.starlette_client import OAuth, OAuthError
 from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from openai import OpenAI
 from pydantic import BaseModel, Field
 import redis
+from supabase import create_client
 from app.services.client_agent.client_agent import ClientAgent
+from app.services.data_interpreter.data_interpreter import CalendarEventManager, EmailIngestionPipeline
 from app.services.orchestrator.memory import ConversationManager
 from app.services.user_manager import CredentialManager
+from app.utils.helper_funcs import trigger_gmail_watch_service
 from app.utils.websocket_manager import WebsocketManager
 
 
@@ -25,6 +29,8 @@ app = FastAPI()
 redis_host = os.getenv("REDIS_HOST", "localhost")
 
 r = redis.Redis(host=redis_host, port=6379, db=0)
+
+# gmail_client = Gmail
 
 
 # Pydantic model for incoming JSON body
@@ -100,7 +106,7 @@ async def gmail_login(request: Request, user_id: str):
     return await oauth.google.authorize_redirect(request, url)
 
 @app.get('/oauth/google/callback')
-async def gmail_auth(request: Request):
+async def gmail_auth(request: Request, background_tasks: BackgroundTasks):
 
     user_id = request.session.get("user_id")
 
@@ -124,6 +130,9 @@ async def gmail_auth(request: Request):
             #add tokens to db
             credential_manager.add_google_tokens(user_id, token.get("access_token"), token.get('refresh_token'), token.get('expires_at'))
 
+            #add gmail watcher
+            background_tasks.add_task(trigger_gmail_watch_service, credential_manager, user_id)
+
         #clear session
         request.session.pop('user_id', None)
 
@@ -139,6 +148,55 @@ async def gmail_auth(request: Request):
     redirect_url = f"aicompanion://auth?status=success&user_id={user_id}"
 
     return RedirectResponse(redirect_url)
+
+@app.post("/webhook/gmail")
+async def receive_gmail_notification(request: Request):
+    try:
+        body = await request.json()
+        message = body.get("message", {})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+    
+    client = OpenAI()
+
+    data_encoded = message.get("data")
+    if data_encoded:
+        # decode data
+        data_decoded = base64.b64decode(data_encoded).decode("utf-8")
+        # get email from data
+        email = json.loads(data_decoded).get("emailAddress")
+
+        print(email)
+        
+        supabase = create_client(
+            os.environ.get("SUPABASE_URL"),
+            os.environ.get("SUPABASE_API_KEY")
+        )
+        
+        # get user_id from supabase with service role key
+        try:
+            response = supabase.table("users").select('id').eq("email", email).single().execute()
+            user_id = response.data["id"]
+            # print(f"USER ID FROM SUPABASE: {response['data']['id']}")
+        except Exception as e:
+            print(e)
+
+        print("initializing email and calendar classes")
+
+        # initialize classes for data processing
+        email_processor = EmailIngestionPipeline(user_id, client)
+        calendar_processor = CalendarEventManager(user_id)
+
+        #process data
+        appointments = email_processor.run()
+
+        print("appointments")
+        print(appointments)
+        
+        if appointments:
+            calendar_processor.manage_calendar_events(appointments)
+
+    return {"status": "received"}
 
 websocket_manager = WebsocketManager()
 
