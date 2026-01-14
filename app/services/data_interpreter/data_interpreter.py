@@ -5,10 +5,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 from supabase import Client, create_client
-from services.google_services.calendar_service.calendar_client import CalendarClient
-from services.google_services.gmail_service.gmail_client import GmailClient
-from services.data_interpreter.email_processor import EmailChunker, EmailEmbedder, EmailUpserter
-from services.user_manager import CredentialManager
+from app.services.google_services.calendar_service.calendar_client import CalendarClient
+from app.services.google_services.gmail_service.gmail_client import GmailClient
+from app.services.data_interpreter.email_processor import EmailChunker, EmailEmbedder, EmailUpserter
+from app.services.google_services.google_service_builder import GoogleServiceBuilder
+from app.services.user_manager import CredentialManager
 
 class AppointmentFilter(BaseModel):
     id: str | None
@@ -42,9 +43,21 @@ class EmailIngestionPipeline:
     def __init__(self, user_id, client):
         self.user_id = user_id
 
+        #scopes
+        scopes = [
+            "https://www.googleapis.com/auth/calendar.readonly",
+            "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.send", 
+            "https://www.googleapis.com/auth/gmail.modify",
+        ]
+
         #services
         self.credential_manager = CredentialManager()
-        self.gmail_service = GmailClient(self.user_id, credential_manager=self.credential_manager)
+
+        gmail_service = GoogleServiceBuilder("gmail", "v1", self.credential_manager, user_id=self.user_id, scopes=scopes)
+
+        self.gmail_service = GmailClient(self.user_id, credential_manager=self.credential_manager, service=gmail_service, scopes=scopes)
         self.client = client
 
         # email helpers
@@ -161,7 +174,19 @@ class CalendarEventManager:
         self.user_id = user_id
         self.credential_manager = CredentialManager()
 
-        self.google_calendar_client = CalendarClient(self.user_id, self.credential_manager)
+        #scopes
+        scopes = [
+            "https://www.googleapis.com/auth/calendar.readonly",
+            "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/gmail.readonly",
+            "https://www.googleapis.com/auth/gmail.send", 
+            "https://www.googleapis.com/auth/gmail.modify",
+        ]
+
+        calendar_service = GoogleServiceBuilder("calendar", "v3", self.credential_manager, user_id=self.user_id, scopes=scopes)
+
+
+        self.google_calendar_client = CalendarClient(self.user_id, self.credential_manager, service=calendar_service, scopes=scopes)
         
         self.url = os.environ.get("SUPABASE_URL")
         self.key = os.environ.get("SUPABASE_API_KEY")
