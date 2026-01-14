@@ -1,9 +1,6 @@
 import os
 import uuid
-from pydantic import BaseModel
-from realtime import Any
 from supabase import Client, create_client
-from services.google_services.gmail_service.gmail_client import GmailClient
 from sentence_transformers import SentenceTransformer
 
 # class email(BaseModel):
