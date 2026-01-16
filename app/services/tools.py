@@ -163,6 +163,9 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
 
 #tool def
 def send_email(user_id: str, to: str, subject: str, body: str, thread_id: str):
+
+    print("IN SEND EMAIL TOOL")
+
     scopes = [
         "https://www.googleapis.com/auth/calendar.readonly",
         "https://www.googleapis.com/auth/calendar.events",
@@ -178,9 +181,16 @@ def send_email(user_id: str, to: str, subject: str, body: str, thread_id: str):
     gmail_client = GmailClient(user_id=user_id, credential_manager=credential_manager, scopes=scopes, service=gmail_service)
 
     try:
-        email_body = gmail_client.create_email(to, subject, body)
+        email_body = gmail_client.create_email(to=to, subject=subject, body=body)
 
-        return gmail_client.send_email(email_body, thread_id)
+        print(email_body)
+
+        sent_email = gmail_client.send_email(email_obj=email_body, thread_id=thread_id)
+
+        print("sent email:")
+        print(sent_email)
+
+        return send_email
         
     except Exception as e:
         return f"Gmail API error: {e}"
@@ -256,10 +266,6 @@ tool_definitions = [
         "parameters": {
             "type": "object",
             "properties": {
-                "user_id": {
-                    "type": "string",
-                    "description": "The user's user_id, self.user_id",
-                },
                 "to": {
                     "type": "string",
                     "description": "The desired base to convert the number to",
@@ -270,10 +276,14 @@ tool_definitions = [
                 },
                 "body": {              
                     "type": "string",
-                    "description": "The email's body.",
+                    "description": "The email's body, do not include thread_id in email's body.",
+                },
+                "thread_id": {              
+                    "type": "string",
+                    "description": "The email's thread_id that connects it to the conversation.",
                 },
             },
-            "required": ["user_id", "to", "subject", "body"],
+            "required": ["to", "subject", "body", 'thread_id'],
             "additionalProperties": False
         },
         }
