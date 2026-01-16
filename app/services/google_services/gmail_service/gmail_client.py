@@ -1,3 +1,4 @@
+from email.message import EmailMessage
 from app.services.google_services.google_base_client import BaseGoogleClient
 import base64
 
@@ -118,3 +119,37 @@ class GmailClient(BaseGoogleClient):
         
         except Exception as e:
             print(e)
+
+    def create_email(
+        self,
+        to: str,
+        subject: str,
+        body: str,
+        sender: str = "me"
+    ):
+        message = EmailMessage()
+        message["To"] = to
+        message["From"] = sender
+        message["Subject"] = subject
+        message.set_content(body)
+
+        encoded_message = base64.urlsafe_b64encode(
+            message.as_bytes()
+        ).decode("utf-8")
+
+        return {
+            "raw": encoded_message,
+        }
+
+    def send_email(self, email_obj, thread_id: str | None = None):
+        service = self._get_service()
+
+        body = email_obj.copy()
+
+        if thread_id:
+            body["threadId"] = thread_id
+
+        return service.users().messages().send(
+            userId="me",
+            body=body
+        ).execute()
