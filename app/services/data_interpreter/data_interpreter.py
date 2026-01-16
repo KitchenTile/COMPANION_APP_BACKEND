@@ -2,14 +2,20 @@ from datetime import datetime, timedelta
 import json
 import os
 from typing import Literal
-
+import uuid
 from pydantic import BaseModel, Field
+import redis
 from supabase import Client, create_client
 from app.services.google_services.calendar_service.calendar_client import CalendarClient
 from app.services.google_services.gmail_service.gmail_client import GmailClient
 from app.services.data_interpreter.email_processor import EmailChunker, EmailEmbedder, EmailUpserter
 from app.services.google_services.google_service_builder import GoogleServiceBuilder
 from app.services.user_manager import CredentialManager
+
+
+redis_host = os.getenv("REDIS_HOST", "localhost")
+
+r = redis.Redis(host=redis_host, port=6379, db=0)
 
 class AppointmentFilter(BaseModel):
     id: str | None
@@ -192,6 +198,11 @@ class CalendarEventManager:
         self.key = os.environ.get("SUPABASE_API_KEY")
         
         self.client: Client = create_client(self.url, self.key)
+
+        #get redis info for orchestrator queue
+        self.redis_host = os.getenv("REDIS_HOST", "localhost")
+
+        self.r = redis.Redis(host=self.redis_host, port=6379, db=0)
         
     #go through appointment list and decide what to do based on intent
     def manage_calendar_events(self, appointments):
@@ -208,16 +219,16 @@ class CalendarEventManager:
                 appointment_end_time = generate_end_time(appointment_start_time=appointment_start_time, time_added=1)
 
             if appointment.get("appointment_details").get("intent") == "new":
-                self._create_new_appointment_event(appointment_summary=appointment_summary, appointment_end_time=appointment_end_time, appointment_start_time=appointment_start_time, appointment_thread_id=appointment_thread_id)
-                    
+                return self._create_new_appointment_event(appointment=appointment, appointment_summary=appointment_summary, appointment_end_time=appointment_end_time, appointment_start_time=appointment_start_time, appointment_thread_id=appointment_thread_id)
+                
             if appointment.get("appointment_details").get("intent") == "reschedule":
-                self._reschedule_appointment(appointment_summary=appointment_summary, appointment_end_time=appointment_end_time, appointment_start_time=appointment_start_time, appointment_thread_id=appointment_thread_id)
+                return self._reschedule_appointment(appointment_summary=appointment_summary, appointment_end_time=appointment_end_time, appointment_start_time=appointment_start_time, appointment_thread_id=appointment_thread_id)
 
             if appointment.get("appointment_details").get("intent") == "cancel":
-                self._cancel_appointment(appointment_thread_id)
+                return self._cancel_appointment(appointment_thread_id)
 
 
-    def _create_new_appointment_event(self, appointment_start_time, appointment_end_time, appointment_summary, appointment_thread_id):
+    def _create_new_appointment_event(self, appointment, appointment_start_time, appointment_end_time, appointment_summary, appointment_thread_id):
         print("NEW APPOINTMENT")
 
         # check for conflicting events with get_all_events
@@ -237,12 +248,43 @@ class CalendarEventManager:
             }
             try:
                 self.google_calendar_client.add_event(event_obj)
-                print("CREATED NEW APPOINTMENT")
+                return "CREATED NEW APPOINTMENT"
             except Exception as e:
                 print(e)
 
         else:
-            print("CONFLICTING EVENTS FOUND")
+            #if user is not free, we need to ask our agent to ask user if they want to send an email to reschedule
+            # print(f"sending task to {packet.get('receiver')}")
+            chat_id = get_chat_id(self.user_id)
+            packet = {
+                "performative": "INFORM",
+                "message_id": appointment.get("headers").get("message_id"),
+                "task_id": str(uuid.uuid4()),
+                "user_id": self.user_id,
+                "chat_id": chat_id,
+                'sender': "CALENDAR_TASK",
+                "receiver": "ORCHESTRATOR_AGENT",
+                "content": {
+                    "message": f"""
+                    User has conflicting appointments on their calendar. We need to inform them about it, giving them the date and time of the overlapping appointment and ask them for consent to send an email to propose a reschedule.
+
+                    Information:
+                        Start: {appointment_start_time} 
+                        End: {appointment_end_time}
+                        Email to be sent to: {appointment.get("headers").get("sender")}
+                        thread id: {appointment_thread_id}
+                        appointment summary: {appointment_summary}
+
+                    After getting consent, you must generate an email body and subject to be used in the send_email tool.
+                    """
+                }
+            }
+
+            data = json.dumps(packet)
+
+                #dispatch task to orchestrator agent
+            r.lpush("orchestrator_queue", data)
+            return "CONFLICTING EVENTS FOUND"
 
     def _reschedule_appointment(self, appointment_summary, appointment_start_time, appointment_end_time, appointment_thread_id):
         #get event id with get_event_by_thread_id(thread_id) and edit it with edit_event(event_id, edit_obj)
@@ -262,6 +304,8 @@ class CalendarEventManager:
         }
         self.google_calendar_client.edit_event(event_id_to_edit, event_obj)
 
+        return "Appointment Rescheduled"
+
 
     def _cancel_appointment(self, appointment_thread_id: str):
         print("CANCEL APPOINTMENT")
@@ -271,6 +315,7 @@ class CalendarEventManager:
         print(event_id_to_cancel)
         self.google_calendar_client.delete_event(event_id_to_cancel)
 
+        return "Appointment cancelled"
 
 def generate_end_time(appointment_start_time, time_added):
 
@@ -280,3 +325,19 @@ def generate_end_time(appointment_start_time, time_added):
     end_str = end_time.isoformat().replace("+00:00", "Z")
 
     return end_str
+
+def get_chat_id(user_id):
+    supabase = create_client(
+        os.environ.get("SUPABASE_URL"),
+        os.environ.get("SUPABASE_API_KEY")
+    )
+
+    # get user_id from supabase 
+    try:
+        response = supabase.table("users").select('chat_id').eq("id", user_id).single().execute()
+    except Exception as e:
+        print(e)
+
+    chat_id = response.data["chat_id"]
+
+    return chat_id
