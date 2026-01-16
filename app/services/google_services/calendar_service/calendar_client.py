@@ -85,8 +85,6 @@ class CalendarClient(BaseGoogleClient):
             )
 
             print(events)
-            print("--- events items id ---")
-            print(events.get("items")[0].get("id"))
             #change return statement to get the item from the event
             return events.get("items")[0].get("id")
         
