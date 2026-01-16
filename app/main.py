@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import secrets
@@ -12,15 +11,11 @@ from starlette.middleware.sessions import SessionMiddleware
 from openai import OpenAI
 from pydantic import BaseModel, Field
 import redis
-from supabase import create_client
 from app.services.client_agent.client_agent import ClientAgent
-from app.services.data_interpreter.data_interpreter import CalendarEventManager, EmailIngestionPipeline
 from app.services.orchestrator.memory import ConversationManager
 from app.services.user_manager import CredentialManager
-from app.utils.helper_funcs import trigger_gmail_watch_service
+from app.utils.helper_funcs import execute_gmail_task, trigger_gmail_watch_service
 from app.utils.websocket_manager import WebsocketManager
-
-
 
 load_dotenv()
 
@@ -126,7 +121,6 @@ async def gmail_auth(request: Request, background_tasks: BackgroundTasks):
 
         if token:
             print(" -- adding token to database -- ")
-
             #add tokens to db
             credential_manager.add_google_tokens(user_id, token.get("access_token"), token.get('refresh_token'), token.get('expires_at'))
 
@@ -150,51 +144,18 @@ async def gmail_auth(request: Request, background_tasks: BackgroundTasks):
     return RedirectResponse(redirect_url)
 
 @app.post("/webhook/gmail")
-async def receive_gmail_notification(request: Request):
+async def receive_gmail_notification(request: Request, background_tasks: BackgroundTasks):
     try:
         body = await request.json()
         message = body.get("message", {})
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON")
     
-    client = OpenAI()
-
+    # encoded data is email and history_id
     data_encoded = message.get("data")
     if data_encoded:
-        # decode data
-        data_decoded = base64.b64decode(data_encoded).decode("utf-8")
-        # get email from data
-        email = json.loads(data_decoded).get("emailAddress")
-
-        print(email)
-        
-        supabase = create_client(
-            os.environ.get("SUPABASE_URL"),
-            os.environ.get("SUPABASE_API_KEY")
-        )
-        
-        # get user_id from supabase with service role key
-        try:
-            response = supabase.table("users").select('id').eq("email", email).single().execute()
-            user_id = response.data["id"]
-            # print(f"USER ID FROM SUPABASE: {response['data']['id']}")
-        except Exception as e:
-            print(e)
-
-        print("initializing email and calendar classes")
-
-        # initialize classes for data processing
-        email_processor = EmailIngestionPipeline(user_id, client)
-        calendar_processor = CalendarEventManager(user_id)
-
-        #process data
-        appointments = email_processor.run()
-
-        print("appointments")
-        print(appointments)
-        
-        if appointments:
-            calendar_processor.manage_calendar_events(appointments)
+        # process email as an async task so the webhook receives the 200 status
+        background_tasks.add_task(execute_gmail_task, data_encoded)
 
     return {"status": "received"}
 
