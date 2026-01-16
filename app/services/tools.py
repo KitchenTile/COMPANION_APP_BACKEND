@@ -190,7 +190,7 @@ def send_email(user_id: str, to: str, subject: str, body: str, thread_id: str):
         print("sent email:")
         print(sent_email)
 
-        return send_email
+        return sent_email
         
     except Exception as e:
         return f"Gmail API error: {e}"
