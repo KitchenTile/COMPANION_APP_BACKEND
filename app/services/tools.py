@@ -3,6 +3,10 @@ import requests
 import dotenv
 import os
 
+from app.services.google_services.google_service_builder import GoogleServiceBuilder
+from app.services.user_manager import CredentialManager
+from app.services.google_services.gmail_service.gmail_client import GmailClient
+
 dotenv.load_dotenv()
 
 
@@ -155,13 +159,40 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
 
     except requests.exceptions.RequestException as e:
         return f"An error occurred: {e}"
+    
+
+#tool def
+def send_email(user_id: str, to: str, subject: str, body: str, thread_id: str):
+    scopes = [
+        "https://www.googleapis.com/auth/calendar.readonly",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.send", 
+        "https://www.googleapis.com/auth/gmail.modify",
+    ]
+
+    credential_manager = CredentialManager()
+
+    gmail_service = GoogleServiceBuilder("gmail", "v1", credential_manager, user_id=user_id, scopes=scopes)
+
+    gmail_client = GmailClient(user_id=user_id, credential_manager=credential_manager, scopes=scopes, service=gmail_service)
+
+    try:
+        email_body = gmail_client.create_email(to, subject, body)
+
+        return gmail_client.send_email(email_body, thread_id)
+        
+    except Exception as e:
+        return f"Gmail API error: {e}"
+
 
 
 tool_dict = {
     "get_horoscope": get_horoscope,
     "get_base_conversion": get_base_conversion,
     "user_interaction": user_interaction,
-    "calculate_google_maps_route": calculate_google_maps_route
+    "calculate_google_maps_route": calculate_google_maps_route,
+    'send_email': send_email
 }
 
 #tools available for the model
@@ -212,6 +243,37 @@ tool_definitions = [
                 },
             },
             "required": ["number", "target_base", "starting_base"],
+            "additionalProperties": False
+        },
+        }
+    },
+    {
+        "type": "function",
+        "function":{
+        "name": "send_email",
+        "description": "Send an email via Gmail. ONLY use this tool after the user has explicitly consented to sending the email.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's user_id, self.user_id",
+                },
+                "to": {
+                    "type": "string",
+                    "description": "The desired base to convert the number to",
+                },
+                "subject": {              
+                    "type": "string",
+                    "description": "The title or subject of the email",
+                },
+                "body": {              
+                    "type": "string",
+                    "description": "The email's body.",
+                },
+            },
+            "required": ["user_id", "to", "subject", "body"],
             "additionalProperties": False
         },
         }
