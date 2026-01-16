@@ -80,11 +80,19 @@ class OrchestratorAgent(AgentBase):
                 print('---------- TOOL USE -----------')
                 print(tool_call.function.name, tool_call.function.arguments)
                 print('-------- END TOOL USE ---------')
+
                 func_args = json.loads(tool_call.function.arguments)
                 func = self.tool_dict[func_name]
 
+                #if tool usage requires user_id, use self user id
+                if "user_id" in func.__code__.co_varnames:
+                    print("IN USER ID CONDITIONAL")
+                    func_args["user_id"] = self.user_id
+
                 #use it
                 result = func(**func_args)
+                print(f"func result for {func_name}")
+                print(result)
 
                 return result
             except Exception as e:
