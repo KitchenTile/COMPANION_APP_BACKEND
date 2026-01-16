@@ -141,7 +141,7 @@ class GmailClient(BaseGoogleClient):
             "raw": encoded_message,
         }
 
-    def send_email(self, email_obj, thread_id: str | None = None):
+    def send_email(self, email_obj, thread_id: str ):
         service = self._get_service()
 
         body = email_obj.copy()
