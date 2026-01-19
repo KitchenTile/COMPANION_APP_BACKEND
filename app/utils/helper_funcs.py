@@ -2,6 +2,7 @@ import base64
 from http import client
 import json
 import os
+import uuid
 
 from openai import OpenAI
 from supabase import create_client
@@ -67,3 +68,37 @@ def execute_gmail_task(data):
         calendar_processor.manage_calendar_events(appointments)
 
 
+def upload_audio_file(filename):
+    supabase = create_client(
+        os.environ.get("SUPABASE_URL"),
+        os.environ.get("SUPABASE_API_KEY")
+    )
+
+    print(filename)
+
+    try:
+        with open (filename, "rb") as f:
+            response = (
+                supabase.storage
+                .from_("audio_files")
+                .upload(
+                    file= f,
+                    path= filename,
+                    file_options={"content-type": "audio/mpeg", "cache-control": "3600", "upsert": "false"}
+                )
+            )
+
+        print(response)
+
+        signed_url = supabase.storage.from_("audio_files").create_signed_url(
+            filename,
+            expires_in=60 * 10,
+        )
+
+        os.remove(filename)
+
+        return signed_url
+
+
+    except Exception as e:
+        print(f"Error uploading audio to supabase: {e}")
