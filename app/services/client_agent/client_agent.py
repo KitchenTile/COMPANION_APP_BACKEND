@@ -1,4 +1,6 @@
 import json
+import os
+from pathlib import Path
 from typing import Any, Dict, Optional
 from uuid import uuid4
 from pydantic import BaseModel
@@ -7,6 +9,8 @@ from app.services.orchestrator.memory import ConversationManager
 from app.services.prompts.prompts import prompt_dict
 
 from dotenv import load_dotenv
+
+from app.utils.helper_funcs import upload_audio_file
 
 
 
@@ -89,8 +93,28 @@ class ClientAgent(AgentBase):
 
         #add response to DB
         self.memory.add_message(final_response, "assistant")
+        
+        filename = f"{str(uuid4())}.mp3"
 
-        return {"answer": final_response, "status": "Completed"}
+        with self.client.audio.speech.with_streaming_response.create(
+                    model="gpt-4o-mini-tts",
+                    voice="ballad",
+                    response_format="mp3",
+                    instructions=f"""
+                        VOICE: Calm, relaxed and calm.
+                        PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
+                        TONE: Lightweight and welcoming.
+                        DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
+                    """,
+                    input=final_response,
+        ) as response:
+            response.stream_to_file(filename)
+
+        audio_url = upload_audio_file(filename)
+
+        print(audio_url)
+
+        return {"answer": final_response, "status": "Completed", "audio_url": audio_url.get("signedURL")}
     
     #send task to redis queue for other agent
     def _handle_task_message(self):
