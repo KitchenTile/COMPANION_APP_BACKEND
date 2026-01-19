@@ -25,4 +25,6 @@ lxml==6.0.2
 
 tqdm==4.67.1
 
+python-multipart==0.0.21
+
 sentence-transformers==5.2.0
