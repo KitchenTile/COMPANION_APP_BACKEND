@@ -125,11 +125,10 @@ class GmailClient(BaseGoogleClient):
         to: str,
         subject: str,
         body: str,
-        sender: str = "me"
     ):
         message = EmailMessage()
         message["To"] = to
-        message["From"] = sender
+        message["From"] = "me"
         message["Subject"] = subject
         message.set_content(body)
 
