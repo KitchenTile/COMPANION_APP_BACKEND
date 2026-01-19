@@ -4,7 +4,7 @@ import secrets
 from typing import Optional
 import uuid
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from authlib.integrations.starlette_client import OAuth, OAuthError
 from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -206,40 +206,111 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: str):
     except WebSocketDisconnect:
         await websocket_manager.disconnect(chat_id=chat_id, websocket=websocket)
     
+@app.post("/chat/transcript")
+async def get_transcript(file: UploadFile = File(...)):
+    try:
+        client = OpenAI()
+
+        audio_bytes = await file.read()
+
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Empty audio file")
+
+        filename = f"{str(uuid.uuid4())}.m4a"
+
+        with open(filename, "wb") as f:
+            f.write(audio_bytes)
+
+        with open(filename, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="gpt-4o-transcribe",
+                file=audio_file,
+                response_format="text"
+            )
+
+        os.remove(filename)
+
+        userQuery = {
+            "chat_id":"1e2d29e6-1b82-442c-ba75-311e91f090de",
+            "user_id":"c8f3bee0-ae2d-4f95-9a62-ee1fe96abe82",
+            "message": transcript,
+            "task_id": None,
+            "pending_tool_id": None
+                }
+
+        result = handle_user_message(chat_id="1e2d29e6-1b82-442c-ba75-311e91f090de", user_id="c8f3bee0-ae2d-4f95-9a62-ee1fe96abe82", message=transcript)
+
+        return {"status": result['response']['status'], "task_id": result["task_id"], "response_text": result["response"]['answer'], "response_audio": result['response']['audio_url'], "data": userQuery}
+
+    except Exception as e:
+        print(e)
 
 # save a message 
 @app.post("/chat/message")
 async def send_message(userQuery: ChatMessageRequest):
     try:
         
-        if not userQuery.task_id:
-            current_task_id = str(uuid.uuid4())
-        else:
-            current_task_id = userQuery.task_id
+        # if not userQuery.task_id:
+        #     current_task_id = str(uuid.uuid4())
+        # else:
+        #     current_task_id = userQuery.task_id
         
-        # init client
-        client = OpenAI()
+        # # init client
+        # client = OpenAI()
 
-        print('task id')
-        print(current_task_id)
-        print('pending tool id')
-        print(userQuery.pending_tool_id)
+        # print('task id')
+        # print(current_task_id)
+        # print('pending tool id')
+        # print(userQuery.pending_tool_id)
         
-        client_agent = ClientAgent(name="Client_Agent", client=client, user_id=userQuery.user_id, chat_id=userQuery.chat_id, dispatcher=r, user_message=userQuery.message, pending_tool_id=userQuery.pending_tool_id, task_id=current_task_id)
+        # client_agent = ClientAgent(name="Client_Agent", client=client, user_id=userQuery.user_id, chat_id=userQuery.chat_id, dispatcher=r, user_message=userQuery.message, pending_tool_id=userQuery.pending_tool_id, task_id=current_task_id)
 
-        response = client_agent.handle_message()
+        # response = client_agent.handle_message()
 
-        print("response")
-        print(response)
+        # print("response")
+        # print(response)
+
+        print(userQuery)
+
+        result = handle_user_message(userQuery.user_id, userQuery.chat_id, userQuery.message, userQuery.task_id, userQuery.pending_tool_id)
 
 
-        return {"status": response['status'], "task_id": current_task_id, "response_text": response['answer'], "data": userQuery}
+        return {"status": result['response']['status'], "task_id": result["task_id"], "response_text": result["response"]['answer'], "response_audio": result['response']['audio_url'], "data": userQuery}
 
     except Exception as e:
         print(f"Server Error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+    
+def handle_user_message(
+    user_id: str,
+    chat_id: str,
+    message: str,
+    task_id: Optional[str] = None,
+    pending_tool_id: Optional[str] = None,
+):
+
+    if not task_id:
+        task_id = str(uuid.uuid4())
+    
+    # init client
+    client = OpenAI()
+
+    print('task id')
+    print(task_id)
+    print('pending tool id')
+    print(pending_tool_id)
+    
+    client_agent = ClientAgent(name="Client_Agent", client=client, user_id=user_id, chat_id=chat_id, dispatcher=r, user_message=message, pending_tool_id=pending_tool_id, task_id=task_id)
+
+    response = client_agent.handle_message()
+
+    return {
+        "task_id": task_id,
+        "response": response,
+    }   
+
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
