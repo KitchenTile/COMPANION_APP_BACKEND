@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional
 from uuid import uuid4
 from app.services.agent_base import AgentBase
 from app.services.orchestrator.memory import ConversationManager
+from app.utils.helper_funcs import upload_audio_file
 
 class OrchestratorAgent(AgentBase):
     def __init__(self, name:str, client: Any, tool_definitions: list[Dict], tool_dict: Dict[str, callable], prompt: str, chat_id: str, user_id: str):
@@ -131,9 +132,28 @@ class OrchestratorAgent(AgentBase):
                         #send the question to the front end
                         self.memory.add_message(result['question'], "assistant")
 
+                        # add audio response
+                        filename = f"{str(uuid4())}.mp3"
+
+                        with self.client.audio.speech.with_streaming_response.create(
+                                    model="gpt-4o-mini-tts",
+                                    voice="ballad",
+                                    response_format="mp3",
+                                    instructions=f"""
+                                        VOICE: Calm, relaxed and calm.
+                                        PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
+                                        TONE: Lightweight and welcoming.
+                                        DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
+                                    """,
+                                    input=result['question'],
+                        ) as response:
+                            response.stream_to_file(filename)
+
+                        audio_url = upload_audio_file(filename)
+
                         user_reply = {
                             "performative": "REQUEST", 
-                            "content": {"message": result['question']}, 
+                            "content": {"message": result['question'], "audio_url": audio_url.get("signedURL")}, 
                             "task_id": self.task_id,
                             "pending_tool_id": tool_call.id ,
                             "message_id": self.message_id,
@@ -148,10 +168,28 @@ class OrchestratorAgent(AgentBase):
                     
                     # check if tool returned a Route Object
                     if isinstance(result, dict) and result.get('action') == "display_route":
-                        # We need to inform the user AND send the polyline
-                        print("in the route direction conditional")
-                                                    
+
+                        #  inform the user AND send the polyline                                                    
                         self.memory.add_message(result['text'], "assistant")
+
+                        # add audio response
+                        filename = f"{str(uuid4())}.mp3"
+
+                        with self.client.audio.speech.with_streaming_response.create(
+                                    model="gpt-4o-mini-tts",
+                                    voice="ballad",
+                                    response_format="mp3",
+                                    instructions=f"""
+                                        VOICE: Calm, relaxed and calm.
+                                        PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
+                                        TONE: Lightweight and welcoming.
+                                        DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
+                                    """,
+                                    input=result['text'],
+                        ) as response:
+                            response.stream_to_file(filename)
+
+                        audio_url = upload_audio_file(filename)
                         
                         #save text to memory so LLM knows what happened
                         self.memory.add_process_log(
@@ -169,7 +207,7 @@ class OrchestratorAgent(AgentBase):
                             "receiver": "USER",
                             "user_id": self.user_id,
                             "task_id": self.task_id,
-                            "content": {"message": result['text']},     
+                            "content": {"message": result['text'], "audio_url": audio_url.get("signedURL")},     
                             "polyline": result['polyline']
                         }
 
@@ -190,6 +228,24 @@ class OrchestratorAgent(AgentBase):
                 print(final_content)
                 
                 self.memory.add_message(final_content, "assistant")
+
+                filename = f"{str(uuid4())}.mp3"
+
+                with self.client.audio.speech.with_streaming_response.create(
+                            model="gpt-4o-mini-tts",
+                            voice="ballad",
+                            response_format="mp3",
+                            instructions=f"""
+                                VOICE: Calm, relaxed and calm.
+                                PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
+                                TONE: Lightweight and welcoming.
+                                DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
+                            """,
+                            input=final_content,
+                ) as response:
+                    response.stream_to_file(filename)
+
+                audio_url = upload_audio_file(filename)
                 
                 return {
                     "performative": "INFORM",
@@ -201,5 +257,5 @@ class OrchestratorAgent(AgentBase):
                     "user_id": self.user_id,
                     "task_id": self.task_id,
 
-                    "content": {"message": final_content},
+                    "content": {"message": final_content, "audio_url": audio_url.get("signedURL")},
                 }
