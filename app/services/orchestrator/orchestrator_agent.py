@@ -37,9 +37,10 @@ class OrchestratorAgent(AgentBase):
                 print("THERE'S COORDS")
                 lost_coords = packet['content'].get("lost_coords")
                 destination = packet['content'].get("destination")
+                origin = packet['content'].get("origin")
 
                 # add lost coords to the lost coords database
-                self.memory.add_lost_coords(lost_coords, destination, self.user_id)
+                self.memory.add_lost_coords(lost_coords, destination, origin, self.user_id)
                 
         else:
             #get tool id
