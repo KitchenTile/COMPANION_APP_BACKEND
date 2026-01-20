@@ -107,7 +107,7 @@ class ConversationManager:
         return messages
 
     # add coords where user's get lost at to the DB
-    def add_lost_coords(self, lost_coords, destination, user_id):
+    def add_lost_coords(self, lost_coords, destination, origin, user_id):
         # check if DB has an entry from user
         response = (
             self.client.table("user_derail_coords")
@@ -124,7 +124,8 @@ class ConversationManager:
                         "id": str(uuid4()),
                         "lost_coords": lost_coords,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "destination": destination
+                        "destination": destination,
+                        "origin": origin
                     }
                 # we add a new entry in the coords column
 
@@ -145,7 +146,8 @@ class ConversationManager:
                         "id": str(uuid4()),
                         "lost_coords": lost_coords,
                         "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "destination": destination
+                        "destination": destination,
+                        "origin": origin
                     }]
                 }).execute()
             except Exception as e:
