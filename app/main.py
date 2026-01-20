@@ -199,7 +199,7 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: str):
                 else:
                     await websocket_manager.send_message(chat_id=chat_id, message=data)
 
-
+ 
             except Exception as e:
                 print(f"Error handling data: {e}")
 
@@ -250,30 +250,9 @@ async def get_transcript(file: UploadFile = File(...)):
 async def send_message(userQuery: ChatMessageRequest):
     try:
         
-        # if not userQuery.task_id:
-        #     current_task_id = str(uuid.uuid4())
-        # else:
-        #     current_task_id = userQuery.task_id
-        
-        # # init client
-        # client = OpenAI()
-
-        # print('task id')
-        # print(current_task_id)
-        # print('pending tool id')
-        # print(userQuery.pending_tool_id)
-        
-        # client_agent = ClientAgent(name="Client_Agent", client=client, user_id=userQuery.user_id, chat_id=userQuery.chat_id, dispatcher=r, user_message=userQuery.message, pending_tool_id=userQuery.pending_tool_id, task_id=current_task_id)
-
-        # response = client_agent.handle_message()
-
-        # print("response")
-        # print(response)
-
         print(userQuery)
 
         result = handle_user_message(userQuery.user_id, userQuery.chat_id, userQuery.message, userQuery.task_id, userQuery.pending_tool_id)
-
 
         return {"status": result['response']['status'], "task_id": result["task_id"], "response_text": result["response"]['answer'], "response_audio": result['response']['audio_url'], "data": userQuery}
 
