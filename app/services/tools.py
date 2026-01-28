@@ -3,9 +3,9 @@ import requests
 import dotenv
 import os
 
-from app.services.google_services.google_service_builder import GoogleServiceBuilder
-from app.services.user_manager import CredentialManager
-from app.services.google_services.gmail_service.gmail_client import GmailClient
+# from app.services.google_services.google_service_builder import GoogleServiceBuilder
+# from app.services.user_manager import CredentialManager
+# from app.services.google_services.gmail_service.gmail_client import GmailClient
 
 dotenv.load_dotenv()
 
@@ -107,14 +107,15 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
             "duration": route.get("localizedValues", {}).get("duration", {}).get("text"),
             "distance": route.get("localizedValues", {}).get("distance", {}).get("text"),
             "fare": route.get("localizedValues", {}).get("transitFare", {}).get("text", "N/A"),
-            "steps": []
+            "steps": [],
+            "raw_steps_data": []
         }
 
         # go through the route steps and add them to the summary
         for leg in route.get("legs", []):
             for index, step in enumerate(leg.get("steps", [])):
 
-                # Handle Transit Details
+                # handle transit details
                 if "transitDetails" in step:
                     transit = step["transitDetails"]
                     line = transit.get("transitLine", {})
@@ -131,7 +132,7 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
                     )
                     
 
-                # Handle Walking Details
+                # handle walking details
                 elif "navigationInstruction" in step:
                     nav = step["navigationInstruction"]
 
@@ -140,6 +141,13 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
                         f"It should take {step.get('localizedValues', {}).get('staticDuration', {}).get('text')} "
                         f"({step.get('localizedValues', {}).get('distance', {}).get('text')})"
                     )
+
+                # individual step details needed for individual polyline AND anticip8
+                route_summary["raw_steps_data"].append({
+                    "index": index + 1,
+                    "instruction": step_instruction, 
+                    "polyline": step.get("polyline", {}).get("encodedPolyline")
+                })
                 
                 route_summary["steps"].append(step_instruction)
         
@@ -163,8 +171,6 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
 
 #tool def
 def send_email(user_id: str, to: str, subject: str, body: str, thread_id: str):
-
-    print("IN SEND EMAIL TOOL")
 
     scopes = [
         "https://www.googleapis.com/auth/calendar.readonly",
@@ -202,7 +208,9 @@ tool_dict = {
     "get_base_conversion": get_base_conversion,
     "user_interaction": user_interaction,
     "calculate_google_maps_route": calculate_google_maps_route,
-    'send_email': send_email
+    'send_email': send_email,
+    "call_uber": None,
+    "message_emergency_contact": None
 }
 
 #tools available for the model
