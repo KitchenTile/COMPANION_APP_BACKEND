@@ -15,6 +15,8 @@ from app.services.client_agent.client_agent import ClientAgent
 from app.services.orchestrator.memory import ConversationManager
 from app.services.user_manager import CredentialManager
 from app.utils.helper_funcs import execute_gmail_task, trigger_gmail_watch_service
+from app.utils.journey_planner import JourneyPlanner
+from app.services.tools import tool_dict
 from app.utils.websocket_manager import WebsocketManager
 
 load_dotenv()
@@ -84,6 +86,20 @@ oauth.register(
 # JWT Configurations
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
+
+@app.post('/anticip8/demo')
+async def anticip8_demo_route(user_id: str, origin: str, destination: str):
+    #get origin and destination, run gpt to build tree
+    #pass tree to anyicip8
+    #return fully built tree
+    tools = list(tool_dict.keys())
+
+    journey_planner = JourneyPlanner(user_id, tools)
+    
+    journey_graph = journey_planner.calculate_route(origin, destination, "model")
+
+    print(journey_planner)
+    return journey_graph
 
 @app.get('/gmailLogin')
 async def gmail_login(request: Request, user_id: str):
