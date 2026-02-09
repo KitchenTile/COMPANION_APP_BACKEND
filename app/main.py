@@ -5,6 +5,7 @@ from typing import Optional
 import uuid
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware 
 from authlib.integrations.starlette_client import OAuth, OAuthError
 from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
@@ -26,6 +27,14 @@ app = FastAPI()
 redis_host = os.getenv("REDIS_HOST", "localhost")
 
 r = redis.Redis(host=redis_host, port=6379, db=0)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins="http://localhost:8081",            
+    allow_credentials=True,
+    allow_methods=["*"],               
+    allow_headers=["*"],               
+)
 
 # gmail_client = Gmail
 
@@ -93,7 +102,7 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 
 @app.post('/anticip8/demo')
-async def anticip8_demo_route(DemoRequest: DemoRequest):
+async def anticip8_demo_route(request_data: DemoRequest):
     #get origin and destination, run gpt to build tree
     #pass tree to anyicip8
     #return fully built tree
@@ -101,7 +110,7 @@ async def anticip8_demo_route(DemoRequest: DemoRequest):
 
     journey_planner = JourneyPlanner(tools)
     
-    journey_graph = journey_planner.calculate_route(DemoRequest.origin, DemoRequest.destination, "model")
+    journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, "model")
 
     print(journey_planner)
     return journey_graph
