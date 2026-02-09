@@ -1,6 +1,5 @@
 from typing import List
 from dotenv import load_dotenv
-import plotly.graph_objects as go
 import networkx as nx
 import json
 from openai import OpenAI
