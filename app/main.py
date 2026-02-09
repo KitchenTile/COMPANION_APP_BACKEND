@@ -38,6 +38,11 @@ class ChatMessageRequest(BaseModel):
     task_id: Optional[str] = None 
     pending_tool_id: Optional[str] = None 
 
+# Pydantic model for incoming JSON body
+class DemoRequest(BaseModel):
+    origin: str
+    destination: str
+
 
 #interface for the response
 class QueryResponse(BaseModel):
@@ -88,15 +93,15 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 
 @app.post('/anticip8/demo')
-async def anticip8_demo_route(user_id: str, origin: str, destination: str):
+async def anticip8_demo_route(DemoRequest: DemoRequest):
     #get origin and destination, run gpt to build tree
     #pass tree to anyicip8
     #return fully built tree
     tools = list(tool_dict.keys())
 
-    journey_planner = JourneyPlanner(user_id, tools)
+    journey_planner = JourneyPlanner(tools)
     
-    journey_graph = journey_planner.calculate_route(origin, destination, "model")
+    journey_graph = journey_planner.calculate_route(DemoRequest.origin, DemoRequest.destination, "model")
 
     print(journey_planner)
     return journey_graph
