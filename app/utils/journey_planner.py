@@ -41,19 +41,26 @@ context_payload_complete = {
     }
 
 class JourneyPlanner():
-    def __init__(self, user_id, tools):
-        self.user_id = user_id
+    def __init__(self, tools):
         self.tools = tools
+        self.travel_steps_from_google = None
 
     def _get_travel_steps(self, origin, destination):
-        self.travel_steps_from_google = calculate_google_maps_route(origin, destination, ["bus"])
+        travel_steps_from_google = calculate_google_maps_route(origin, destination, ["bus"])
+        self.travel_steps_from_google = travel_steps_from_google.get("text")
 
     def calculate_route(self, origin, destination, model):
         if not self.travel_steps_from_google:
+            print(f"calculating travel steps from {origin} to {destination}")
             self._get_travel_steps(origin, destination)
+
+        print(self.travel_steps_from_google)
             
+        print("calulating graph based on travel steps")
         step_information = get_gpt_path_edges(self.travel_steps_from_google, self.tools)
 
+        print(f"Graph: {step_information}")
+        print("Initiating anticip8")
         anticip8 = Anticip8RoutePredictor()
 
         for index, step in enumerate(step_information.get("steps")):
@@ -68,8 +75,6 @@ class JourneyPlanner():
                 print(preventions)
                 corrections = f"""Corrections for this failure: {risk.get("correction")}"""
                 print(corrections)
-
-
 
                 dynamic_history = (
                         f"JOURNEY STATUS: User is currently at Step {index+1} of {len(step_information['steps'])}. "
@@ -111,9 +116,12 @@ class JourneyPlanner():
                 risk["best_prevention"] = best_prevention
                 risk["best_correction"] = best_correction
 
+                print(" -- ")
                 print(f"best prevention: {best_prevention}")
                 print(f"best correction: {best_correction}")
+                print(" -- ")
 
-            print(step_information)
-            return step_information
+
+        print(step_information)
+        return step_information
 
