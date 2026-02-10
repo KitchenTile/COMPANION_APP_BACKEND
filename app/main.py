@@ -51,6 +51,7 @@ class ChatMessageRequest(BaseModel):
 class DemoRequest(BaseModel):
     origin: str
     destination: str
+    model: str
 
 
 #interface for the response
