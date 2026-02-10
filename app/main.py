@@ -103,18 +103,17 @@ ALGORITHM = "HS256"
 
 @app.post('/anticip8/demo')
 async def anticip8_demo_route(request_data: DemoRequest):
-    #get origin and destination, run gpt to build tree
-    #pass tree to anyicip8
-    #return fully built tree
     print(f"Route endpoint hit. Origin: {request_data.origin}, Destination: {request_data.destination}")
     tools = list(tool_dict.keys())
 
     journey_planner = JourneyPlanner(tools)
     
-    journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, "model")
+    journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, request_data.model)
 
     print(journey_planner)
     return journey_graph
+
+
 
 @app.get('/gmailLogin')
 async def gmail_login(request: Request, user_id: str):
