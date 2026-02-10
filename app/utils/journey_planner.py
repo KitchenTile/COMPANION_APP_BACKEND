@@ -69,15 +69,15 @@ class JourneyPlanner():
         travel_steps_from_google = calculate_google_maps_route(origin, destination, ["bus"])
         self.travel_steps_from_google = travel_steps_from_google.get("text")
 
-    def calculate_route(self, origin, destination, model):
+    def calculate_route(self, origin, destination, model = "gpt-5"):
         if not self.travel_steps_from_google:
-            print(f"calculating travel steps from {origin} to {destination}")
+            print(f"calculating travel steps from {origin} to {destination}, using {model}")
             self._get_travel_steps(origin, destination)
 
         print(self.travel_steps_from_google)
             
         print("calulating graph based on travel steps")
-        step_information = get_gpt_path_edges(self.travel_steps_from_google, self.tools)
+        step_information = get_gpt_path_edges(self.travel_steps_from_google, self.tools, model)
 
         print(f"Graph: {step_information}")
         print("Initiating anticip8")
