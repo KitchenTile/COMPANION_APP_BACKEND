@@ -106,6 +106,7 @@ async def anticip8_demo_route(request_data: DemoRequest):
     #get origin and destination, run gpt to build tree
     #pass tree to anyicip8
     #return fully built tree
+    print(f"Route endpoint hit. Origin: {request_data.origin}, Destination: {request_data.destination}")
     tools = list(tool_dict.keys())
 
     journey_planner = JourneyPlanner(tools)
