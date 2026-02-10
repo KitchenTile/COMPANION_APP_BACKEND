@@ -106,7 +106,7 @@ class JourneyPlanner():
 
                 dynamic_triggers = (
                     f"IMMEDIATE THREAT: {risk['failure_mode']} - {risk['label']}. "
-                    f"ENVIRONMENTAL CONTEXT: Current temperature at user's location is {current_weather.get("temperature")}. Current precipitation level at user's location is {current_weather.get("precipitation")}  "
+                    f"ENVIRONMENTAL CONTEXT: Current temperature at user's location is {current_weather.get('temperature')}. Current precipitation level at user's location is {current_weather.get("precipitation")}  "
                     f"USER STATE: Anxious about lateness."
                     f"ACTION HISTORY: James has a 100% success rate with Uber, 20% with manual re-routing."
 
