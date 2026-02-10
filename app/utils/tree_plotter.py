@@ -50,6 +50,7 @@ class TripAudit(BaseModel):
 
 #SINGLE GPT QUERY RETURNING JSON OBJECT WITH CORRECT PATH, FAILURES, INTERVENTIONS AND CORRECTIONS
 def get_gpt_path_edges(maps_data, tools):
+    print("Generating Graph...")
     
     system_prompt = f"""
         You are a "Resilient Route Architect" for an elderly-focused travel app. 
