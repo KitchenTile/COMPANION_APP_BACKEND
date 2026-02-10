@@ -55,11 +55,11 @@ def get_london_weather():
                 "temperature": f"{data['current']['temperature_2m']}°C",
                 "precipitation": f"{data['current']['precipitation']} mm"
             }
-            return json.dumps(result, indent=4)
+            return result
             
     except Exception as e:
         return json.dumps({"error": str(e)})
-
+    
 class JourneyPlanner():
     def __init__(self, tools):
         self.tools = tools
@@ -106,7 +106,7 @@ class JourneyPlanner():
 
                 dynamic_triggers = (
                     f"IMMEDIATE THREAT: {risk['failure_mode']} - {risk['label']}. "
-                    f"ENVIRONMENTAL CONTEXT: Current temperature at user's location is {current_weather.get('temperature')}. Current precipitation level at user's location is {current_weather.get('precipitation')}  "
+                    f"ENVIRONMENTAL CONTEXT: Current temperature at user's location is {current_weather.get('temperature')}. Current precipitation level at user's location is {current_weather.get('precipitation')}"
                     f"USER STATE: Anxious about lateness."
                     f"ACTION HISTORY: James has a 100% success rate with Uber, 20% with manual re-routing."
 
