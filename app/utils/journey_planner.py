@@ -1,19 +1,20 @@
+import json
+import ssl
+
+import urllib
 from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
 from app.services.tools import calculate_google_maps_route
 from app.utils.tree_plotter import get_gpt_path_edges
 
 
 profile_text_complete = """
-    SUBJECT PROFILE: James elder male 72 years old
+    SUBJECT PROFILE: James elder male 72 years old.
     - MOBILITY: Walking speed is 50% slower than average. Uses a cane.
     - RELATIONSHIPS: User has strong relationships with close family members. Main point of contact.
     - ANXIETY: High anxiety about being late. High anxiety about getting lost, prefers the same route every time. Mild anxiety about falling.
     - ALTERNATIVE TRAVEL: Has Uber app installed but rarely uses it due to cost concerns.
     - PREVIOUS LOST HISTORY: {
-        GENERAL TRAVEL DATA: "Out of their last 10 trips, user got lost seven times while changing busses. User never got lost while walking. Out of the last 10 journeys, user always reaches their destination BUT they take the wrong bus every time (!)."
-        SPECIFIC ROUTE LOST HISTORY: 
-            DESCRIPTION: The user got lost three times during this same trip
-            LOST DETAILS: [{lost_coords: (51.58148, -0.24444), origin: Home, destination: Doctors office, lost_step: 3, step_mode: walk }, {lost_coords: (51.58148, -0.24444), origin: Home, destination: Doctors office, lost_step: 3, step_mode: walk }, {lost_coords: (51.58148, -0.24444), origin: Home, destination: Doctors office, lost_step: 3, step_mode: walk }, {lost_coords: (51.58148, -0.24444), origin: Home, destination: Doctors office, lost_step: 3, step_mode: walk }, {lost_coords: (51.58148, -0.24444), origin: Home, destination: Doctors office, lost_step: 3, step_mode: walk }, {lost_coords: (51.58148, -0.24444), origin: Home, destination: Doctors office, lost_step: 3, step_mode: walk }]
+        GENERAL TRAVEL DATA: "Out of their last 10 trips, user got lost seven times while changing busses. User never got lost while walking. User positively reacts to being gently rerouted through voice command. User prefers not being suggested to order an uber."
     }
     """
     # context payload
@@ -36,9 +37,28 @@ context_payload_complete = {
             "1. APPOINTMENTS: User has regular doctors appointment today."
             "2. WEATHER: Heavy Rain (Walking to bus stop will be difficult). "
             "3. TRAFFIC: Roads are clear."
+            f"ACTION HISTORY: James has a 100% success rate with Uber, 20% with manual re-routing."
             "USER IS ABOUT TO GET LOST IN ROUTE"
         )
     }
+
+def get_london_weather():
+    url = "https://api.open-meteo.com/v1/forecast?latitude=51.5074&longitude=-0.1278&current=temperature_2m,precipitation&timezone=auto"
+    
+    context = ssl._create_unverified_context()
+    
+    try:
+        with urllib.request.urlopen(url, context=context) as response:
+            data = json.loads(response.read().decode())
+            
+            result = {
+                "temperature": f"{data['current']['temperature_2m']}°C",
+                "precipitation": f"{data['current']['precipitation']} mm"
+            }
+            return json.dumps(result, indent=4)
+            
+    except Exception as e:
+        return json.dumps({"error": str(e)})
 
 class JourneyPlanner():
     def __init__(self, tools):
@@ -76,6 +96,8 @@ class JourneyPlanner():
                 corrections = f"""Corrections for this failure: {risk.get("correction")}"""
                 print(corrections)
 
+                current_weather = get_london_weather()
+
                 dynamic_history = (
                         f"JOURNEY STATUS: User is currently at Step {index+1} of {len(step_information['steps'])}. "
                         f"LOCATION: Moving from {step['node_from']} to {step['node_to']}. "
@@ -84,8 +106,10 @@ class JourneyPlanner():
 
                 dynamic_triggers = (
                     f"IMMEDIATE THREAT: {risk['failure_mode']} - {risk['label']}. "
-                    f"ENVIRONMENTAL CONTEXT: Heavy Rain (makes walking/cane use difficult). "
+                    f"ENVIRONMENTAL CONTEXT: Current temperature at user's location is {current_weather.get("temperature")}. Current precipitation level at user's location is {current_weather.get("precipitation")}  "
                     f"USER STATE: Anxious about lateness."
+                    f"ACTION HISTORY: James has a 100% success rate with Uber, 20% with manual re-routing."
+
                 )
 
                 current_context_payload = {
@@ -104,11 +128,13 @@ class JourneyPlanner():
                     option_type="prevention"
                 )
 
+                # add extra line to trigger text to indicate the user had an issue
+                current_context_payload["triggers_text"] += f" CRITICAL: {risk['failure_mode']} has occurred!"
+                crisis_context_id = anticip8.generate_context(current_context_payload)
+
                 # Rank Corrections 
-                # We might want to slightly tweak context here to say "User JUST failed"
-                # but for now, using the same context is okay.
                 best_correction = anticip8.rank_step_options(
-                    context_id,
+                    crisis_context_id,
                     risk['correction'], 
                     option_type="correction"
                 )
