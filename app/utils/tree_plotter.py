@@ -49,7 +49,7 @@ class TripAudit(BaseModel):
     steps: List[JourneyStep]
 
 #SINGLE GPT QUERY RETURNING JSON OBJECT WITH CORRECT PATH, FAILURES, INTERVENTIONS AND CORRECTIONS
-def get_gpt_path_edges(maps_data, tools):
+def get_gpt_path_edges(maps_data, tools, model):
     print("Generating Graph...")
     
     system_prompt = f"""
@@ -97,7 +97,7 @@ def get_gpt_path_edges(maps_data, tools):
         - Keep all labels and descriptions concise for elderly users.
         """
     response = client.responses.parse(
-        model="gpt-5",
+        model=model,
         instructions=system_prompt,
         input = maps_data,
         text_format=TripAudit
