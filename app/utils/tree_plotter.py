@@ -66,6 +66,13 @@ class JourneyStepFailure(BaseModel):
 class GraphWithFailures(BaseModel):
     steps: List[JourneyStepFailure]
 
+class Risk(BaseModel):
+    failure_mode: str
+    label: str
+
+class RisksArray(BaseModel):
+    risks: List[Risk]
+
 #SINGLE GPT QUERY RETURNING JSON OBJECT WITH CORRECT PATH, FAILURES, INTERVENTIONS AND CORRECTIONS
 def get_gpt_path_edges(maps_data, tools, model):
     print("Generating Graph...")
@@ -282,4 +289,34 @@ def get_gpt_failure_nodes(maps_data, current_step, user_data, model):
     
     if "edges" in result:
         return result["edges"]
+    return result
+
+#format anticip8's failure nodes
+def gpt_formatted_nodes(map_data, failure_nodes, model):
+            
+    system_prompt = f"""
+        You are a "Resilient Route Architect" for an elderly-focused travel app. 
+        Your goal is to format incoming data into a graph node in a way that fits the existing travel graph nodes. 
+
+        ### INPUT:
+        A list of Google Maps trip steps and a specific failure situation in natural language.
+
+        ### OUTPUT OBJECTIVES:
+        An array of risk objects
+
+        ### RULES FOR RISK FORMATTING:
+             1. Summarize the natural language input into the core failure mode using less than 5 words (e.g., 'Missed Bus 32', 'Panick Attack', 'Trip and Fall').
+             2. The "label" must give an explanation of how the failure state was reached (e.g. "Uneven pavement hazard", "Missed Right Turn"), avoid using the "node_to" as a "label".
+             3. Keep all labels and descriptions concise for elderly users.
+           """
+    response = client.responses.parse(
+        model=model,
+        instructions=system_prompt,
+        input = f"MAP DATA: {map_data}, FAILURE NODES: {failure_nodes}",
+        text_format=RisksArray
+    )
+
+    content = response.output[1].content[0].text
+    result = json.loads(content)
+
     return result
