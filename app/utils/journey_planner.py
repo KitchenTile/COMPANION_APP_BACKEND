@@ -4,7 +4,7 @@ import ssl
 import urllib
 from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
 from app.services.tools import calculate_google_maps_route
-from app.utils.tree_plotter import get_gpt_path_edges
+from app.utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_path_edges, get_gpt_preventions, gpt_formatted_nodes
 
 
 profile_text_complete = """
@@ -61,8 +61,9 @@ def get_london_weather():
         return json.dumps({"error": str(e)})
     
 class JourneyPlanner():
-    def __init__(self, tools):
+    def __init__(self, tools, anticip8):
         self.tools = tools
+        self.anticip8 = anticip8
         self.travel_steps_from_google = None
 
     def _get_travel_steps(self, origin, destination):
@@ -109,7 +110,6 @@ class JourneyPlanner():
                     f"ENVIRONMENTAL CONTEXT: Current temperature at user's location is {current_weather.get('temperature')}. Current precipitation level at user's location is {current_weather.get('precipitation')}"
                     f"USER STATE: Anxious about lateness."
                     f"ACTION HISTORY: James has a 100% success rate with Uber, 20% with manual re-routing."
-
                 )
 
                 current_context_payload = {
@@ -150,4 +150,79 @@ class JourneyPlanner():
 
         print(step_information)
         return step_information
+    
+    def anticip8_graph_with_failures(self, correct_graph_path, user_profile):
+        for index, step in enumerate(correct_graph_path.get("steps")):
+            if index+1 > 1:
+                previous_events = f"User has successfully completed steps 1 to {index + 1}."
+            else:
+                previous_events = f"User is about to start their journey's first step."
+
+            
+            dynamic_history = (
+                f"JOURNEY STATUS: User is currently at Step {index+1} of {len(correct_graph_path.get('steps'))}. "
+                f"LOCATION: Moving from {step['node_from']} to {step['node_to']} by {step['label']}. "
+                f"RULES FOR ANTICIP8: GIVE NEGATIVE ACTIONS THAT WOULD DERAIL THE USER FROM THEIR CURRENT PATH. DO NOT INCLUDE ANY OTHER ACTION IN THE PREDICTED ANTICIPATIONS OTHER THAN THESE DERAIL ACTIONS"
+            )
+
+            dynamic_triggers = (
+                f"PREVIOUS EVENTS: {previous_events}"
+            )
+
+            current_context_payload = {
+                "subject": "Negative sitation's for Rosa's journey",
+                "subject_profile_text": user_profile,
+                "recent_history_text": dynamic_history,
+                "triggers_text": dynamic_triggers
+            }
+
+            context_id = self.anticip8.generate_context(current_context_payload)
+
+            anticip8_failures = self.anticip8.get_anticip8_failures(context_id)
+
+            print(anticip8_failures)
+
+            anticip8_failure_modes = []
+            for risk in anticip8_failures:
+                anticip8_failure_modes.append(risk.get('action'))
+
+            formatted_nodes = gpt_formatted_nodes(step, anticip8_failure_modes, "gpt-5")
+
+            print(formatted_nodes)
+
+            for index, node in enumerate(formatted_nodes.get("risks")):
+                node['probability'] = anticip8_failures[index].get("probability")
+
+
+            step['risks'] = formatted_nodes.get('risks')
+        
+        return correct_graph_path
+
+    
+    def calculate_route_wo_corrections(self, origin, destination, user_profile, model):
+        if not self.travel_steps_from_google:
+            print(f"calculating travel steps from {origin} to {destination}, using {model}")
+            self._get_travel_steps(origin, destination)
+
+        print(self.travel_steps_from_google)
+
+        # turn google maps data into graph like structure
+        correct_graph_path = get_gpt_correct_graph(self.travel_steps_from_google, "gpt-5")
+
+        path_with_failures = {}
+
+        if model == "anticip8":
+            # this is the anticip8 generated graph with error nodes
+            path_with_failures = self.anticip8_graph_with_failures(correct_graph_path, user_profile)
+
+        else:
+            # add failure nodes
+            path_with_failures = get_gpt_failure_nodes_general(correct_graph_path, user_profile, "gpt-5")
+
+        #add preventions
+        path_with_preventions = get_gpt_preventions(path_with_failures, "gpt-5")
+
+        return path_with_preventions
+
+
 
