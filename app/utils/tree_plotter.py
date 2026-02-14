@@ -17,12 +17,6 @@ class NodeEdgeInfo(BaseModel):
     node_to: str
     label: str
 
-class TreeStructure(BaseModel):
-    edges: list[NodeEdgeInfo]
-
-class Actions(BaseModel):
-    actions_array: list[str]
-
 class Prevention(BaseModel):
     node_from: str
     node_to: str
@@ -65,6 +59,16 @@ class JourneyStepFailure(BaseModel):
 
 class GraphWithFailures(BaseModel):
     steps: List[JourneyStepFailure]
+
+class JourneyStepFailureAndPreventions(BaseModel):
+    node_from: str
+    node_to: str
+    label: str 
+    risks: List[JustFailures]
+    preventions: List[str]
+
+class GraphWithFailuresAndPreventions(BaseModel):
+    steps: List[JourneyStepFailureAndPreventions]
 
 class Risk(BaseModel):
     failure_mode: str
@@ -139,7 +143,7 @@ def get_gpt_path_edges(maps_data, tools, model):
 
 #SINGLE GPT QUERY RETURNING JSON OBJECT WITH CORRECT PATH, FAILURES, INTERVENTIONS AND CORRECTIONS
 def get_gpt_failure_nodes_general(maps_data, user_data, model):
-    print("Generating Graph...")
+    print("Generating gpt graph with failures...")
     
     system_prompt = f"""
         You are a "Resilient Route Architect" for an elderly-focused travel app. 
@@ -194,9 +198,9 @@ def get_gpt_failure_nodes_general(maps_data, user_data, model):
     return result
 
 
-
+# generate a correct path from google maps steps
 def get_gpt_correct_graph(maps_data, model):
-    print("Generating Graph...")
+    print("Generating graph from maps data...")
     
     system_prompt = f"""
         You are a "Resilient Route Architect" for an elderly-focused travel app. 
@@ -235,53 +239,66 @@ def get_gpt_correct_graph(maps_data, model):
         return result["edges"]
     return result
 
-
-#SINGLE GPT QUERY RETURNING JSON OBJECT WITH CORRECT PATH, FAILURES, INTERVENTIONS AND CORRECTIONS
-def get_gpt_failure_nodes(maps_data, current_step, user_data, model):
-    print("Generating Graph...")
+#Based on maps with failures, generate preventions
+def get_gpt_preventions(maps_data, model):
+    print("Generating gpt graph with preventions...")
     
     system_prompt = f"""
         You are a "Resilient Route Architect" for an elderly-focused travel app. 
-        Your goal is to generate up to four failure nodes for the current step the user is at. 
+        Your goal is to given Google Maps data in graph ready form, add preventions that would allow prevent the user from falling into the "failure_mode" nodes.
+        This way you would effectively allow the user to keep on their correct path.
 
         ### INPUT:
-        A list of Google Maps trip steps, the user's current step and the user's profile.
+        A list of travel objects with the shape: node_from: A travel step origin. node_to: A trave step destination. label: An explanation of how to get from node_from to node_to. Risks: An array of risks objects explaining what could happen to deviate the user from their current path.
 
         ### OUTPUT OBJECTIVES:
-        For every logical segment of the trip, you must generate a "Happy Path" edge and up to four "Failure Branch" objects.
+        For every logical segment of the trip, you must generate a up to three preventions that would prevent the user from falling into these risk scenarios.
 
-        ### RULES FOR HAPPY PATH GENERATION:
-             1. Summarize small consecutive walking steps into a single meaningful edge (e.g., "Walk 5 mins to Station").
-             2. Keep Transit steps distinct.
-             3. Ensure the graph is continuous (the 'node_to' of step A must be the 'node_from' of step B).
-             4. Start the first node as "Start" and the last node as "Destination".
-             5. Ensure step 'node_to' and 'node_from' have meaninful names instead of index numbers or letters, if the user is about to take a bus, indicate they are going from bus stop to bus stop.
-             6. Ignore the time each step takes.
-             7. Keep to a maximum of 5 words.
-
-        ### RULES FOR FAILURE BRANCH OBJECT GENERATION:
-            1. The 'node_from' must match a node from the input.
-            2. The 'node_to' must be a new, unique failure state (e.g., "Missed Bus", "Lost Wallet").
-            3. If the step involves a Bus/Train, the failure must be transit-related (e.g., "Bus broke down").
-            4. The "label" must give an explanation of how the failure state was reached (e.g. "trip and fall", "Missed Bus Stop"), avoid using the "node_to" as a "label".
-            5. Keep labels short (max 5 words).
-            6. Failure nodes should not necessarily be tailored to the specific user's vulnerabilities.
+        ### RULES FOR PROACTIVE PREVENTION GENERATION:
+            1. Word the prevention from the application point of view (e.g., "Use voice navigation to keep user on track", "Remind user to be careful and watch path", "Use voice command to keep user on time") 
+            2. Provide 1-3 short tips (max 8 words) to avoid specific failures before they happen.
+            3. If the prevention is related to arriving to a specific location earlier, phrase it as 'remind user to leave earlier' to get to the location you're referring to in time.
+        """
     
-        ### RULES FOR SEVERITY CALCULATION:
-            1. Calculate Risk severity on a scale of 1-5.
+    response = client.responses.parse(
+        model=model,
+        instructions=system_prompt,
+        input = f"Map data: {maps_data}",
+        text_format=GraphWithFailuresAndPreventions
+    )
 
-        ### RULES FOR PROBABILITY CALCULATION:
-            1. Calculate how probable it is for the user to fail in this particular way based on their vulnerabilities on a scale of 0-1.
-            
-        ### FORMATTING:
-        - Use meaningful names for nodes (e.g., "Hendon Stop" not "Stop 1").
-        - Keep all labels and descriptions concise for elderly users.
+    content = response.output[1].content[0].text
+    result = json.loads(content)
+    
+    if "edges" in result:
+        return result["edges"]
+    return result
+
+
+#SINGLE GPT QUERY RETURNING JSON OBJECT WITH CORRECT PATH, FAILURES, INTERVENTIONS AND CORRECTIONS
+def get_gpt_new_probabilities(current_step, action_array, user_data, model):
+    print("Generating gpt graph with failures...")
+    
+    system_prompt = f"""
+        You are a "Resilient Route Architect" for an elderly-focused travel app. 
+        Your goal is to recalculate failure probability based on one or more possible preventions against failure situations. 
+
+        ### INPUT:
+        The current journey step the user is in, the user information, and an array of one or more actions taken to prevent the user from straying from their path.
+
+        ### OUTPUT OBJECTIVES:
+        The output should be the same journey step with the only change being the new probability (if applicable) of any affected risk happening. If the prevention or preventions applied DO NOT affect a particular failure probability, return the same value.
+
+        ### RULES FOR PROBABILITY ADJUSTMENT:
+             1. Based on one or more actions taken in the from of an array of actions, RECALCULATE the probability value of each of the risks inside the journey step.
+             2. If a particular risk is not affected by the prevention action or actions, return the same value.
+             3. Base your adjustments on the user's profile and their vulnerabilities.
         """
     response = client.responses.parse(
         model=model,
         instructions=system_prompt,
-        input = f"MAP DATA: {maps_data}, USER'S PROFILE: {user_data}",
-        text_format=TripAudit
+        input = f"CURRENT STEP: {current_step}, USER'S PROFILE: {user_data}, ACTIONS TAKEN: {action_array}",
+        text_format=JourneyStepFailureAndPreventions
     )
 
     content = response.output[1].content[0].text
