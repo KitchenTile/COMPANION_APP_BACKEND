@@ -178,7 +178,7 @@ class JourneyPlanner():
 
             context_id = self.anticip8.generate_context(current_context_payload)
 
-            anticip8_failures = self.anticip8.get_anticip8_failures(context_id)
+            anticip8_failures = self.anticip8.anticip8_call(context_id, anticip8_gen_number = 4)
 
             print(anticip8_failures)
 
