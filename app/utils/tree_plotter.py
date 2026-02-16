@@ -65,6 +65,7 @@ class JourneyStepFailureAndPreventions(BaseModel):
     node_from: str
     node_to: str
     label: str 
+    probability: float
     risks: List[JustFailures]
     preventions: List[str]
 
@@ -122,6 +123,7 @@ def get_gpt_path_edges(maps_data, tools, model):
 
         ### RULES FOR SEVERITY CALCULATION:
             1. Calculate Risk severity on a scale of 1-5.
+
         ### FORMATTING:
         - Use meaningful names for nodes (e.g., "Hendon Stop" not "Stop 1").
         - Keep all labels and descriptions concise for elderly users.
@@ -178,7 +180,7 @@ def get_gpt_failure_nodes_general(maps_data, user_data, model):
             1. Calculate Risk severity on a scale of 1-5.
 
         ### RULES FOR PROBABILITY CALCULATION:
-            1. Calculate how probable it is for the user to fail in this particular way based on their vulnerabilities on a scale of 0-0.99.
+            1. Calculate how probable it is for the user to fail in this particular way based on their vulnerabilities on a scale of 1-10. Make sure to ALSO include the probability for the user to go in the correct following node based on their profile.
             
         ### FORMATTING:
         - Use meaningful names for nodes (e.g., "Hendon Stop" not "Stop 1").
@@ -257,7 +259,7 @@ def get_gpt_preventions(maps_data, model):
 
         ### RULES FOR PROACTIVE PREVENTION GENERATION:
             1. Word the prevention from the application point of view (e.g., "Use voice navigation to keep user on track", "Remind user to be careful and watch path", "Use voice command to keep user on time") 
-            2. Provide 1-3 short tips (max 8 words) to avoid specific failures before they happen.
+            2. Provide 1-3 short preventions (max 8 words) to avoid specific failures before they happen.
             3. If the prevention is related to arriving to a specific location earlier, phrase it as 'remind user to leave earlier' to get to the location you're referring to in time.
         """
     
