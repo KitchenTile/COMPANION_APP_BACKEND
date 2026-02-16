@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from openai import OpenAI
 from pydantic import BaseModel, Field
 import redis
+from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
 from app.services.client_agent.client_agent import ClientAgent
 from app.services.orchestrator.memory import ConversationManager
 from app.services.user_manager import CredentialManager
@@ -107,9 +108,39 @@ async def anticip8_demo_route(request_data: DemoRequest):
     print(f"Route endpoint hit. Origin: {request_data.origin}, Destination: {request_data.destination}")
     tools = list(tool_dict.keys())
 
-    journey_planner = JourneyPlanner(tools)
-    
-    journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, request_data.model)
+    anticip8 = Anticip8RoutePredictor()
+
+    user_profile = {
+        "identity": {
+            "name": "Rosa",
+            "age": 75,
+            "living_status": "Lives alone, semi-independent",
+        },
+        "clinical_context": {
+            "condition": "Early-stage Dementia",
+            "cognitive_load": "High susceptibility to 'Sundeowning' (increased confusion in late afternoon)",
+            "symptoms": [
+                "Short-term memory lapses",
+                "Spatial disorientation",
+                "Executive function decline",
+                "Sensory overstimulation"
+            ]
+        },
+        "behavioral_history": {
+            "navigation_errors": {
+                "bus_accuracy": "20% failure rate (wrong bus)",
+                "directional_logic": "50% failure rate (reversing orientation)",
+                "waypoint_memory": "10% failure rate (missing stops)"
+            },
+            "anxiety_triggers": "Crowds, loud echoes, complex transit hubs, and rushing commuters."
+        },
+    }
+
+    journey_planner = JourneyPlanner(tools, anticip8)
+
+    journey_graph = journey_planner.calculate_route_wo_corrections(request_data.origin, request_data.destination, user_profile, request_data.model)
+
+    # journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, request_data.model)
 
     print(journey_planner)
     return journey_graph
