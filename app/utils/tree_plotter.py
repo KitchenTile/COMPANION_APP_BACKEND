@@ -55,6 +55,7 @@ class JourneyStepFailure(BaseModel):
     node_from: str
     node_to: str
     label: str 
+    probability: float
     risks: List[JustFailures]
 
 class GraphWithFailures(BaseModel):
