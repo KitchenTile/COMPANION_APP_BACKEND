@@ -136,9 +136,41 @@ async def anticip8_demo_route(request_data: DemoRequest):
         },
     }
 
+    users_profile2 = {
+        "identity": {
+            "name": "Harold",
+            "age": 82,
+            "living_status": "Lives alone, receives part-time caregiver support",
+        },
+        "clinical_context": {
+            "condition": "Age-related Frailty Syndrome",
+            "physical_load": "Low physiological reserve, high fatigue after minimal exertion",
+            "symptoms": [
+                "Reduced muscle strength",
+                "Slow gait speed",
+                "Poor balance and fall risk",
+                "Low endurance",
+                "Delayed recovery after illness"
+            ]
+        },
+        "behavioral_history": {
+            "mobility_limitations": {
+                "walking_tolerance": "Needs rest after 5-10 minutes",
+                "stair_navigation": "Requires handrail, 40% difficulty without support",
+                "assistive_device_use": "Uses cane outdoors"
+            },
+            "health_vulnerabilities": {
+                "fall_history": "2 minor falls in past year",
+                "hospitalization_risk": "High risk after acute infection or dehydration",
+                "medication_sensitivity": "Increased side-effect susceptibility"
+            },
+            "anxiety_triggers": "Fear of falling, icy sidewalks, long standing times, rushed environments, poorly lit spaces."
+        },
+    }
+
     journey_planner = JourneyPlanner(tools, anticip8)
 
-    journey_graph = journey_planner.calculate_route_wo_corrections(request_data.origin, request_data.destination, user_profile, request_data.model)
+    journey_graph = journey_planner.calculate_route_wo_corrections(request_data.origin, request_data.destination, users_profile2, request_data.model)
 
     # journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, request_data.model)
 
