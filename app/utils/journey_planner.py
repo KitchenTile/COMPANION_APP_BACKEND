@@ -159,6 +159,9 @@ class JourneyPlanner():
                 previous_events = f"User is about to start their journey's first step."
 
             
+            user_profile_string = f"{user_profile}"
+
+            
             dynamic_history = (
                 f"JOURNEY STATUS: User is currently at Step {index+1} of {len(correct_graph_path.get('steps'))}. "
                 f"LOCATION: Moving from {step['node_from']} to {step['node_to']} by {step['label']}. "
@@ -171,20 +174,23 @@ class JourneyPlanner():
 
             current_context_payload = {
                 "subject": "Negative sitation's for Rosa's journey",
-                "subject_profile_text": user_profile,
+                "subject_profile_text": user_profile_string,
                 "recent_history_text": dynamic_history,
                 "triggers_text": dynamic_triggers
             }
 
             context_id = self.anticip8.generate_context(current_context_payload)
 
-            anticip8_failures = self.anticip8.anticip8_call(context_id, anticip8_gen_number = 4)
+            anticip8_failures = self.anticip8.anticip8_call(context_id, anticipation_list=[step['label']], anticip8_gen_number = 4)
 
             print(anticip8_failures)
 
             anticip8_failure_modes = []
-            for risk in anticip8_failures:
-                anticip8_failure_modes.append(risk.get('action'))
+            for index, risk in enumerate(anticip8_failures):
+                if risk.get("action") != step['label']:
+                    anticip8_failure_modes.append(risk.get('action'))
+                else:
+                    step['probability'] = risk.get("probability")
 
             formatted_nodes = gpt_formatted_nodes(step, anticip8_failure_modes, "gpt-5")
 
