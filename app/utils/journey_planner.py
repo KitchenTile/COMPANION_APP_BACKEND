@@ -207,7 +207,103 @@ class JourneyPlanner():
             step['risks'] = formatted_nodes.get('risks')
         
         return correct_graph_path
+    
 
+
+
+    def calculate_new_probability(graph, user_profile):
+        # caluclate how the robability changes with each prevention
+        for step in graph.get("steps"):
+            detailed_preventions = []
+
+            for prevention in step.get("preventions"):
+                new_probabilities = get_gpt_new_probabilities(step, prevention, user_profile, "gpt-5-nano")
+
+                print(new_probabilities)
+                print("new_probabilities")
+            
+                # Map the new probabilities to the failure modes
+                risk_impacts = {}
+                #add correct route probability change
+                risk_impacts[step.get("node_to")] = step.get("probability")
+
+                for risk in new_probabilities.get("risks", []):
+                    risk_impacts[risk.get("failure_mode")] = risk.get("probability")
+
+                # Store the prevention label along with its specific probability adjustments
+                detailed_preventions.append({
+                    "label": prevention,
+                    "adjusted_probabilities": risk_impacts
+                })
+
+                print("detailed preventions")
+                print(detailed_preventions)
+            
+            step["preventions"] = detailed_preventions
+
+        return graph
+    
+
+    def anticip8_calculate_new_probability(self, correct_graph_path, user_profile):
+        for index, step in enumerate(correct_graph_path.get("steps")):
+            detailed_preventions = []
+
+            if index+1 > 1:
+                previous_events = f"User has successfully completed steps 1 to {index + 1}."
+            else:
+                previous_events = f"User is about to start their journey's first step."
+
+            
+            user_profile_string = f"{user_profile}"
+
+            for prevention in step.get("preventions"):
+
+            
+                dynamic_history = (
+                    f"JOURNEY STATUS: User is currently at Step {index+1} of {len(correct_graph_path.get('steps'))}. "
+                    f"LOCATION: Moving from {step['node_from']} to {step['node_to']} by {step['label']}. "
+                )
+
+                dynamic_triggers = (
+                    f"PREVIOUS EVENTS: {previous_events}, ACTION TAKEN: {prevention}"
+                )
+
+                current_context_payload = {
+                    "subject": "Rosa's journey probability after taking an action",
+                    "subject_profile_text": user_profile_string,
+                    "recent_history_text": dynamic_history,
+                    "triggers_text": dynamic_triggers
+                }
+
+                context_id = self.anticip8.generate_context(current_context_payload)
+
+                action_list = [step['node_to']]
+
+                for risk in step.get("risks"):
+                    action_list.append(risk.get("failure_mode"))
+                    
+                print("action_list")
+                print(action_list)
+
+                anticip8_node_recalculation = self.anticip8.anticip8_call(context_id, anticipation_list=action_list, anticip8_gen_number = 1)
+
+                print("recalculations:")
+                print(anticip8_node_recalculation)
+
+                risk_impacts = {}
+                for anticipation in anticip8_node_recalculation:
+                    if anticipation["source"] != "Anticip8":
+                        risk_impacts[anticipation["action"]] = anticipation["probability"]
+
+                detailed_preventions.append({
+                    "label": prevention,
+                    "adjusted_probabilities": risk_impacts
+                })
+
+                
+            step["preventions"] = detailed_preventions
+        
+        return correct_graph_path
     
     def calculate_route_wo_corrections(self, origin, destination, user_profile, model):
         if not self.travel_steps_from_google:
@@ -220,7 +316,6 @@ class JourneyPlanner():
         correct_graph_path = get_gpt_correct_graph(self.travel_steps_from_google, "gpt-5")
 
         path_with_failures = {}
-
         if model == "anticip8":
             # this is the anticip8 generated graph with error nodes
             path_with_failures = self.anticip8_graph_with_failures(correct_graph_path, user_profile)
@@ -237,31 +332,11 @@ class JourneyPlanner():
         print()
         print("calculating prevention weight on nodes")
 
-        detailed_preventions = []
-        # caluclate how the robability changes with each prevention
-        for step in path_with_preventions.get("steps"):
-            for prevention in step.get("preventions"):
-                new_probabilities = get_gpt_new_probabilities(step, prevention, user_profile, "gpt-5")
-            
-                # Map the new probabilities to the failure modes
-                risk_impacts = {}
-                for risk in new_probabilities.get("risks", []):
-                    risk_impacts[risk.get("failure_mode")] = risk.get("probability")
+        graph_with_new_weights = {}
+        if model == "anticip8":
+            graph_with_new_weights = self.anticip8_calculate_new_probability(path_with_preventions, user_profile)
 
-                # Store the prevention label along with its specific probability adjustments
-                detailed_preventions.append({
-                    "label": prevention,
-                    "adjusted_probabilities": risk_impacts
-                })
-            
-            step["preventions"] = detailed_preventions
+        else:
+            graph_with_new_weights = self.calculate_new_probability(path_with_preventions, user_profile)
 
-        return path_with_preventions
-
-
-
-    def calculate_new_probability(graph, users_profile, selected_preventions):
-        for step in graph.get("steps"):
-            recalculated_risk = get_gpt_new_probabilities(step, selected_preventions, users_profile, "gpt-5")
-
-            return recalculated_risk
+        return graph_with_new_weights
