@@ -284,18 +284,19 @@ def get_gpt_new_probabilities(current_step, prevention, user_data, model):
     
     system_prompt = f"""
         You are a "Resilient Route Architect" for an elderly-focused travel app. 
-        Your goal is to recalculate failure probability based a possible prevention against failure situations. 
+        Your goal is to recalculate failure and correct path probability based a possible prevention against failure situations. 
 
         ### INPUT:
         The current journey step the user is in, the user information, and one action taken to prevent the user from straying from their path.
 
         ### OUTPUT OBJECTIVES:
-        The output should be the same journey step with the only change being the new probability (if applicable) of any affected risk happening. If the prevention applied DO NOT affect a particular failure probability, return the same value.
+        The output should be the same journey step with the only change being the new probabilities (if applicable) wether node_to probability or a risk probability. If the prevention applied DO NOT affect a particular failure probability or correct path, return the same value.
 
         ### RULES FOR PROBABILITY ADJUSTMENT:
-             1. Based on the action taken, RECALCULATE the probability value of each of the risks inside the journey step.
-             2. If a particular risk is not affected by the prevention action, return the same value.
-             3. Base your adjustments on the user's profile and their vulnerabilities.
+             1. Based on the action taken, RECALCULATE the probability value of each of the risks (and correct path) inside the journey step.
+             2. The next step's correct path is the "node_to" property. To recalculate the correct node probability, change the current step's "probability" property.
+             3. If a particular risk is not affected by the prevention action, return the same value.
+             4. Base your adjustments on the user's profile and their vulnerabilities.
         """
     response = client.responses.parse(
         model=model,
