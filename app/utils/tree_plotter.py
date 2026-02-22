@@ -144,7 +144,7 @@ def get_gpt_path_edges(maps_data, tools, model):
 
 
 
-#SINGLE GPT QUERY RETURNING JSON OBJECT WITH CORRECT PATH, FAILURES, INTERVENTIONS AND CORRECTIONS
+#Generates graph with correct steps and failure modes
 def get_gpt_failure_nodes_general(maps_data, user_data, model):
     print("Generating gpt graph with failures...")
     
@@ -278,29 +278,29 @@ def get_gpt_preventions(maps_data, model):
     return result
 
 
-#SINGLE GPT QUERY RETURNING JSON OBJECT WITH CORRECT PATH, FAILURES, INTERVENTIONS AND CORRECTIONS
-def get_gpt_new_probabilities(current_step, action_array, user_data, model):
+#Changes probabilities based on preventions
+def get_gpt_new_probabilities(current_step, prevention, user_data, model):
     print("Generating gpt graph with failures...")
     
     system_prompt = f"""
         You are a "Resilient Route Architect" for an elderly-focused travel app. 
-        Your goal is to recalculate failure probability based on one or more possible preventions against failure situations. 
+        Your goal is to recalculate failure probability based a possible prevention against failure situations. 
 
         ### INPUT:
-        The current journey step the user is in, the user information, and an array of one or more actions taken to prevent the user from straying from their path.
+        The current journey step the user is in, the user information, and one action taken to prevent the user from straying from their path.
 
         ### OUTPUT OBJECTIVES:
-        The output should be the same journey step with the only change being the new probability (if applicable) of any affected risk happening. If the prevention or preventions applied DO NOT affect a particular failure probability, return the same value.
+        The output should be the same journey step with the only change being the new probability (if applicable) of any affected risk happening. If the prevention applied DO NOT affect a particular failure probability, return the same value.
 
         ### RULES FOR PROBABILITY ADJUSTMENT:
-             1. Based on one or more actions taken in the from of an array of actions, RECALCULATE the probability value of each of the risks inside the journey step.
-             2. If a particular risk is not affected by the prevention action or actions, return the same value.
+             1. Based on the action taken, RECALCULATE the probability value of each of the risks inside the journey step.
+             2. If a particular risk is not affected by the prevention action, return the same value.
              3. Base your adjustments on the user's profile and their vulnerabilities.
         """
     response = client.responses.parse(
         model=model,
         instructions=system_prompt,
-        input = f"CURRENT STEP: {current_step}, USER'S PROFILE: {user_data}, ACTIONS TAKEN: {action_array}",
+        input = f"CURRENT STEP: {current_step}, USER'S PROFILE: {user_data}, ACTION TAKEN: {prevention}",
         text_format=JourneyStepFailureAndPreventions
     )
 
