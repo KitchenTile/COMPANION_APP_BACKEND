@@ -2,9 +2,13 @@ import json
 import ssl
 
 import urllib
-from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
-from app.services.tools import calculate_google_maps_route
-from app.utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_path_edges, get_gpt_preventions, gpt_formatted_nodes
+# from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
+# from app.services.tools import calculate_google_maps_route
+# from app.utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_new_probabilities, get_gpt_path_edges, get_gpt_preventions, gpt_formatted_nodes
+
+from services.anticip8.anticip8_test import Anticip8RoutePredictor
+from services.tools import calculate_google_maps_route
+from utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_new_probabilities, get_gpt_path_edges, get_gpt_preventions, gpt_formatted_nodes
 
 
 profile_text_complete = """
@@ -228,7 +232,36 @@ class JourneyPlanner():
         #add preventions
         path_with_preventions = get_gpt_preventions(path_with_failures, "gpt-5")
 
+        print("path with preventions:")
+        print(path_with_preventions)
+        print()
+        print("calculating prevention weight on nodes")
+
+        detailed_preventions = []
+        # caluclate how the robability changes with each prevention
+        for step in path_with_preventions.get("steps"):
+            for prevention in step.get("preventions"):
+                new_probabilities = get_gpt_new_probabilities(step, prevention, user_profile, "gpt-5")
+            
+                # Map the new probabilities to the failure modes
+                risk_impacts = {}
+                for risk in new_probabilities.get("risks", []):
+                    risk_impacts[risk.get("failure_mode")] = risk.get("probability")
+
+                # Store the prevention label along with its specific probability adjustments
+                detailed_preventions.append({
+                    "label": prevention,
+                    "adjusted_probabilities": risk_impacts
+                })
+            
+            step["preventions"] = detailed_preventions
+
         return path_with_preventions
 
 
 
+    def calculate_new_probability(graph, users_profile, selected_preventions):
+        for step in graph.get("steps"):
+            recalculated_risk = get_gpt_new_probabilities(step, selected_preventions, users_profile, "gpt-5")
+
+            return recalculated_risk
