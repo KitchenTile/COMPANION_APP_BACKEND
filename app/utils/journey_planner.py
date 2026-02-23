@@ -2,14 +2,9 @@ import json
 import ssl
 
 import urllib
-# from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
-# from app.services.tools import calculate_google_maps_route
-# from app.utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_new_probabilities, get_gpt_path_edges, get_gpt_preventions, gpt_formatted_nodes
-
-from services.anticip8.anticip8_test import Anticip8RoutePredictor
-from services.tools import calculate_google_maps_route
-from utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_new_probabilities, get_gpt_path_edges, get_gpt_preventions, gpt_formatted_nodes
-
+from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
+from app.services.tools import calculate_google_maps_route
+from app.utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_new_probabilities, get_gpt_path_edges, get_gpt_preventions, gpt_formatted_nodes
 
 profile_text_complete = """
     SUBJECT PROFILE: James elder male 72 years old.
