@@ -206,7 +206,7 @@ class JourneyPlanner():
 
 
 
-    def calculate_new_probability(graph, user_profile):
+    def calculate_new_probability(self, graph, user_profile):
         # caluclate how the robability changes with each prevention
         for step in graph.get("steps"):
             detailed_preventions = []
