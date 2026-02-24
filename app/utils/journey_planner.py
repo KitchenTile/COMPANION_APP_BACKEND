@@ -220,7 +220,7 @@ class JourneyPlanner():
                 # Map the new probabilities to the failure modes
                 risk_impacts = {}
                 #add correct route probability change
-                risk_impacts[step.get("node_to")] = step.get("probability")
+                risk_impacts[step.get("node_to")] = new_probabilities.get("probability")
 
                 for risk in new_probabilities.get("risks", []):
                     risk_impacts[risk.get("failure_mode")] = risk.get("probability")
