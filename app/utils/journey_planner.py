@@ -300,7 +300,7 @@ class JourneyPlanner():
         
         return correct_graph_path
     
-    def calculate_route_wo_corrections(self, origin, destination, user_profile, model):
+    def calculate_route_wo_corrections(self, origin, destination, user_profile, model, probability_model):
         if not self.travel_steps_from_google:
             print(f"calculating travel steps from {origin} to {destination}, using {model}")
             self._get_travel_steps(origin, destination)
@@ -328,7 +328,7 @@ class JourneyPlanner():
         print("calculating prevention weight on nodes")
 
         graph_with_new_weights = {}
-        if model == "anticip8":
+        if probability_model == "anticip8":
             graph_with_new_weights = self.anticip8_calculate_new_probability(path_with_preventions, user_profile)
 
         else:

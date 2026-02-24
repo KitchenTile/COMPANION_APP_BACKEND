@@ -53,6 +53,7 @@ class DemoRequest(BaseModel):
     origin: str
     destination: str
     model: str
+    probability_model: str
 
 
 #interface for the response
@@ -170,7 +171,7 @@ async def anticip8_demo_route(request_data: DemoRequest):
 
     journey_planner = JourneyPlanner(tools, anticip8)
 
-    journey_graph = journey_planner.calculate_route_wo_corrections(request_data.origin, request_data.destination, users_profile2, request_data.model)
+    journey_graph = journey_planner.calculate_route_wo_corrections(request_data.origin, request_data.destination, users_profile2, request_data.model, request_data.probability_model)
 
     # journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, request_data.model)
 
