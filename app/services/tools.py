@@ -51,7 +51,7 @@ def user_interaction(query: str):
 
 
 #tool def
-def calculate_google_maps_route(origin: str, destination: str, transport_mode: list[str]):
+def calculate_google_maps_route(origin: str, destination: str, transport_mode: list[str] = ["bus"]):
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": os.getenv("GOOGLE_MAPS_API_KEY"),
@@ -99,8 +99,12 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
         
         route = data['routes'][0]
 
+        print(data)
+
         #get encoded polyline for the location tracking
         encodedPolyline = route.get("legs", [])[0].get('polyline', {}).get('encodedPolyline')
+        invididualPolylines = [p.get("polyline", {}).get("encodedPolyline") for p in route.get("legs", [])[0].get('steps', {})]
+        
 
         #get fastest route metadata
         route_summary = {
@@ -162,6 +166,7 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
         return {
             "text": final_string,
             "polyline": encodedPolyline,
+            "individualPolylines": invididualPolylines,
             "action": "display_route"
             }
 
