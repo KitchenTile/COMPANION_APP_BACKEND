@@ -210,7 +210,8 @@ class OrchestratorAgent(AgentBase):
                             "task_id": self.task_id,
                             "content": {"message": result['text'], "audio_url": audio_url.get("signedURL")},     
                             "polyline": result['polyline'],
-                            "individualPolylines": result['individualPolylines']
+                            "individualPolylines": result['individualPolylines'],
+                            "graph": result['graph']
                         }
 
                     #log the tool use         
