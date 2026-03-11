@@ -281,6 +281,7 @@ tool_dict = {
     "user_interaction": user_interaction,
     "calculate_google_maps_route": calculate_google_maps_route,
     'send_email': send_email,
+    "generate_route_with_preventions": generate_route_with_preventions,
     "call_uber": None,
     "message_emergency_contact": None
 }
