@@ -17,7 +17,7 @@ class OrchestratorAgent(AgentBase):
         self.memory = ConversationManager(self.chat_id, self.user_id)
         self.task_id = None
         self.message_id = None
-        self.journey_planner = None
+        self.journey_planner = journey_planner
 
     #get message from redis broaker
     def receive_message(self, packet):
@@ -93,7 +93,7 @@ class OrchestratorAgent(AgentBase):
                     func_args["user_id"] = self.user_id
 
                 if "journey_planner" in func.__code__.co_varnames:
-                    print("IN USER ID CONDITIONAL")
+                    print("IN JOURNEY PLANNER CONDITIONAL")
                     func_args["journey_planner"] = self.journey_planner
 
                 #use it
