@@ -3,9 +3,11 @@ import requests
 import dotenv
 import os
 
+from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
 from app.services.google_services.google_service_builder import GoogleServiceBuilder
 from app.services.user_manager import CredentialManager
 from app.services.google_services.gmail_service.gmail_client import GmailClient
+from app.utils.journey_planner import JourneyPlanner
 
 dotenv.load_dotenv()
 
@@ -103,7 +105,7 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
 
         #get encoded polyline for the location tracking
         encodedPolyline = route.get("legs", [])[0].get('polyline', {}).get('encodedPolyline')
-        invididualPolylines = [p.get("polyline", {}).get("encodedPolyline") for p in route.get("legs", [])[0].get('steps', {})]
+        individualPolylines = [p.get("polyline", {}).get("encodedPolyline") for p in route.get("legs", [])[0].get('steps', {})]
         
 
         #get fastest route metadata
@@ -166,12 +168,82 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
         return {
             "text": final_string,
             "polyline": encodedPolyline,
-            "individualPolylines": invididualPolylines,
+            "individualPolylines": individualPolylines,
             "action": "display_route"
             }
 
     except requests.exceptions.RequestException as e:
         return f"An error occurred: {e}"
+    
+def generate_route_with_preventions(origin, destination):
+    anticip8 = Anticip8RoutePredictor()
+
+    user_profile = {
+        "identity": {
+            "name": "Rosa",
+            "age": 75,
+            "living_status": "Lives alone, semi-independent",
+        },
+        "clinical_context": {
+            "condition": "Early-stage Dementia",
+            "cognitive_load": "High susceptibility to 'Sundeowning' (increased confusion in late afternoon)",
+            "symptoms": [
+                "Short-term memory lapses",
+                "Spatial disorientation",
+                "Executive function decline",
+                "Sensory overstimulation"
+            ]
+        },
+        "behavioral_history": {
+            "navigation_errors": {
+                "bus_accuracy": "20% failure rate (wrong bus)",
+                "directional_logic": "50% failure rate (reversing orientation)",
+                "waypoint_memory": "10% failure rate (missing stops)"
+            },
+            "anxiety_triggers": "Crowds, loud echoes, complex transit hubs, and rushing commuters."
+        },
+    }
+
+    users_profile2 = {
+        "identity": {
+            "name": "Harold",
+            "age": 82,
+            "living_status": "Lives alone, receives part-time caregiver support",
+        },
+        "clinical_context": {
+            "condition": "Age-related Frailty Syndrome",
+            "physical_load": "Low physiological reserve, high fatigue after minimal exertion",
+            "symptoms": [
+                "Reduced muscle strength",
+                "Slow gait speed",
+                "Poor balance and fall risk",
+                "Low endurance",
+                "Delayed recovery after illness"
+            ]
+        },
+        "behavioral_history": {
+            "mobility_limitations": {
+                "walking_tolerance": "Needs rest after 5-10 minutes",
+                "stair_navigation": "Requires handrail, 40% difficulty without support",
+                "assistive_device_use": "Uses cane outdoors"
+            },
+            "health_vulnerabilities": {
+                "fall_history": "2 minor falls in past year",
+                "hospitalization_risk": "High risk after acute infection or dehydration",
+                "medication_sensitivity": "Increased side-effect susceptibility"
+            },
+            "anxiety_triggers": "Fear of falling, icy sidewalks, long standing times, rushed environments, poorly lit spaces."
+        },
+    }
+
+    journey_planner = JourneyPlanner(tools = None, anticip8 = anticip8)
+
+    journey_graph = journey_planner.calculate_route_wo_corrections(origin, destination, user_profile, "anticip8", "gpt-5")
+
+    print(journey_planner)
+
+    return journey_graph
+
     
 
 #tool def
@@ -323,7 +395,7 @@ tool_definitions = [
     {
         "type": "function",
         "function":{
-        "name": "calculate_google_maps_route",
+        "name": "generate_route_with_preventions",
         "description": "Function to calculate route between two places.",
         "strict": True,
         "parameters": {
@@ -337,16 +409,8 @@ tool_definitions = [
                     "type": "string",
                     "description": "Destination used to calculate route.",
                 },
-                "transport_mode": {
-                "type": "array",
-                "items": {
-                    "type": "string",
-                    "enum": ["BUS", "SUBWAY", "TRAIN", "LIGHT_RAIL", "RAIL"]
-                },
-                    "description": "Transit modes to allow"
-                }
             },
-            "required": ["origin", "destination","transport_mode"],
+            "required": ["origin", "destination"],
             "additionalProperties": False
         },
         }
