@@ -87,8 +87,6 @@ class JourneyPlanner():
             step['risks'] = formatted_nodes.get('risks')
         
         return correct_graph_path
-    
-
 
 
     def calculate_new_probability(self, graph, user_profile):
@@ -185,13 +183,33 @@ class JourneyPlanner():
         
         return correct_graph_path
     
+
+    def add_best_preventions(self, graph):
+        for step in graph['steps']:
+            best_prevention = None
+            highest_success_prob = 0
+            success_node = step['node_to']
+
+            for prevention in step.get('preventions', []):
+                success_prob = prevention['adjusted_probabilities'].get(success_node)
+                if success_prob > highest_success_prob:
+                    highest_success_prob = success_prob
+                    best_prevention = prevention
+            
+            # Strip away the array and just attach the best one to the step
+            step['best_prevention'] = best_prevention 
+
+            print("Best Prevention")
+            print(step["best_prevention"])
+
+        return graph
+    
     def calculate_route_wo_corrections(self, origin, destination, user_profile, model, probability_model):
         if not self.travel_steps_from_google:
             print(f"calculating travel steps from {origin} to {destination}, using {model}")
             self._get_travel_steps(origin, destination)
 
         print(self.travel_steps_from_google)
-
         # turn google maps data into graph like structure
         correct_graph_path = get_gpt_correct_graph(self.travel_steps_from_google.get("text"), "gpt-5")
 
@@ -219,8 +237,12 @@ class JourneyPlanner():
         else:
             graph_with_new_weights = self.calculate_new_probability(path_with_preventions, user_profile)
 
+        final_graph = self.add_best_preventions(graph_with_new_weights)
+
+        print(final_graph)
+
         return {
-            "graph": graph_with_new_weights,
+            "graph": final_graph,
             "text": self.travel_steps_from_google.get("text"),
             "polyline": self.travel_steps_from_google.get("polyline"),
             "individualPolylines": self.travel_steps_from_google.get("individualPolylines"),
