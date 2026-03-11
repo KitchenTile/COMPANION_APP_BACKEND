@@ -6,7 +6,7 @@ from app.services.orchestrator.memory import ConversationManager
 from app.utils.helper_funcs import upload_audio_file
 
 class OrchestratorAgent(AgentBase):
-    def __init__(self, name:str, client: Any, tool_definitions: list[Dict], tool_dict: Dict[str, callable], prompt: str, chat_id: str, user_id: str):
+    def __init__(self, name:str, client: Any, tool_definitions: list[Dict], tool_dict: Dict[str, callable], prompt: str, chat_id: str, user_id: str, journey_planner: Any):
         super().__init__( name=name, client=client)
 
         self.tools = tool_definitions
