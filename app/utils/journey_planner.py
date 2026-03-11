@@ -31,7 +31,9 @@ class JourneyPlanner():
 
     def _get_travel_steps(self, origin, destination):
         travel_steps_from_google = calculate_google_maps_route(origin, destination, ["bus"])
-        self.travel_steps_from_google = travel_steps_from_google.get("text")
+        self.travel_steps_from_google = travel_steps_from_google
+
+        
 
     def anticip8_graph_with_failures(self, correct_graph_path, user_profile):
         for index, step in enumerate(correct_graph_path.get("steps")):
@@ -191,7 +193,7 @@ class JourneyPlanner():
         print(self.travel_steps_from_google)
 
         # turn google maps data into graph like structure
-        correct_graph_path = get_gpt_correct_graph(self.travel_steps_from_google, "gpt-5")
+        correct_graph_path = get_gpt_correct_graph(self.travel_steps_from_google.get("text"), "gpt-5")
 
         path_with_failures = {}
         if model == "anticip8":
@@ -217,4 +219,10 @@ class JourneyPlanner():
         else:
             graph_with_new_weights = self.calculate_new_probability(path_with_preventions, user_profile)
 
-        return graph_with_new_weights
+        return {
+            "graph": graph_with_new_weights,
+            "text": self.travel_steps_from_google.get("text"),
+            "polyline": self.travel_steps_from_google.get("polyline"),
+            "individualPolylines": self.travel_steps_from_google.get("individualPolylines"),
+            "action": "display_route"
+        }
