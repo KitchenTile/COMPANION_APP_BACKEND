@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Literal
 from dotenv import load_dotenv
 import networkx as nx
 import json
@@ -17,12 +17,18 @@ class NodeEdgeInfo(BaseModel):
     node_to: str
     label: str
 
-class Prevention(BaseModel):
-    node_from: str
-    node_to: str
-    label: str
-    itervetion: str
+# class Prevention(BaseModel):
+#     node_from: str
+#     node_to: str
+#     label: str
+#     itervetion: str
 
+class Prevention(BaseModel):
+    label: str
+    action_type: Literal["VOICE_ALERT", "UI_MODAL", "BACKGROUND_REROUTE"]
+    action_payload: str
+    trigger_timing: Literal["AT_STEP_START", "MID_STEP", "AT_STEP_END"]
+    
 class Preventions(BaseModel):
     preventions: list[Prevention]
 
@@ -39,8 +45,6 @@ class JourneyStep(BaseModel):
     label: str 
     risks: List[Recovery]
 
-class TripAudit(BaseModel):
-    steps: List[JourneyStep]
 
 class NodeEdgeInfoArray(BaseModel):
     steps: List[NodeEdgeInfo]
@@ -78,71 +82,6 @@ class Risk(BaseModel):
 
 class RisksArray(BaseModel):
     risks: List[Risk]
-
-#SINGLE GPT QUERY RETURNING JSON OBJECT WITH CORRECT PATH, FAILURES, INTERVENTIONS AND CORRECTIONS
-def get_gpt_path_edges(maps_data, tools, model):
-    print("Generating Graph...")
-    
-    system_prompt = f"""
-        You are a "Resilient Route Architect" for an elderly-focused travel app. 
-        Your goal is to transform Google Maps data into a robust, self-healing journey graph.
-
-        ### INPUT:
-        A list of Google Maps trip steps.
-
-        ### OUTPUT OBJECTIVES:
-        For every logical segment of the trip, you must generate a "Happy Path" edge and two "Failure Branch" objects.
-
-        ### RULES FOR HAPPY PATH GENERATION:
-             1. Summarize small consecutive walking steps into a single meaningful edge (e.g., "Walk 5 mins to Station").
-             2. Keep Transit steps distinct.
-             3. Ensure the graph is continuous (the 'node_to' of step A must be the 'node_from' of step B).
-             4. Start the first node as "Start" and the last node as "Destination".
-             5. Ensure step 'node_to' and 'node_from' have meaninful names instead of index numbers or letters, if the user is about to take a bus, indicate they are going from bus stop to bus stop.
-             6. Ignore the time each step takes.
-             7. Keep to a maximum of 5 words.
-
-        ### RULES FOR FAILURE BRANCH OBJECT GENERATION:
-            1. The 'node_from' must match a node from the input.
-            2. The 'node_to' must be a new, unique failure state (e.g., "Missed Bus", "Lost Wallet").
-            3. If the step involves a Bus/Train, the failure must be transit-related (e.g., "Bus broke down").
-            4. The "label" must give an explanation of how the failure state was reached (e.g. "trip and fall", "Missed Bus Stop"), avoid using the "node_to" as a "label".
-            5. Keep labels short (max 5 words).
-            6. For every edge, generate 2 failure objects.
-    
-        ### RULES FOR PROACTIVE PREVENTION GENERATION:
-            1. Word the prevention from the application point of view (e.g., "Use voice navigation to keep user on track", "Remind user to be careful and watch path", "Use voice command to keep user on time") 
-            2. Provide 1-3 short tips (max 8 words) to avoid this specific failure before it happens.
-            3. If the prevention is related to arriving to a specific location earlier, phrase it as 'remind user to leave earlier' to get to the location you're referring to in time.
-
-        ### RULES FOR REACTIVE CORRECTION GENERATION:
-            1. Use tools available here: {tools}
-            2. Decide ALL relevant tool to solve solve the situation.
-            3. If no tool can solve the situaion, default to contacting the emergency contact.
-            4. Do no return just the tool name, return a string of natural language (maximum 5 words) about the tool name (e.g. "ACTION: RECALCULATE ROUTE", "ACTION: CONTACT EMERGENCY CONTACT", "ACTION: EMAIL DOCTORS OFFICE")
-
-        ### RULES FOR SEVERITY CALCULATION:
-            1. Calculate Risk severity on a scale of 1-5.
-
-        ### FORMATTING:
-        - Use meaningful names for nodes (e.g., "Hendon Stop" not "Stop 1").
-        - Keep all labels and descriptions concise for elderly users.
-        """
-    response = client.responses.parse(
-        model=model,
-        instructions=system_prompt,
-        input = maps_data,
-        text_format=TripAudit
-    )
-
-    content = response.output[1].content[0].text
-    result = json.loads(content)
-    
-    if "edges" in result:
-        return result["edges"]
-    return result
-
-
 
 #Generates graph with correct steps and failure modes
 def get_gpt_failure_nodes_general(maps_data, user_data, model):
@@ -195,9 +134,7 @@ def get_gpt_failure_nodes_general(maps_data, user_data, model):
 
     content = response.output[1].content[0].text
     result = json.loads(content)
-    
-    if "edges" in result:
-        return result["edges"]
+
     return result
 
 
@@ -237,9 +174,7 @@ def get_gpt_correct_graph(maps_data, model):
 
     content = response.output[1].content[0].text
     result = json.loads(content)
-    
-    if "edges" in result:
-        return result["edges"]
+
     return result
 
 #Based on maps with failures, generate preventions
@@ -272,9 +207,7 @@ def get_gpt_preventions(maps_data, model):
 
     content = response.output[1].content[0].text
     result = json.loads(content)
-    
-    if "edges" in result:
-        return result["edges"]
+
     return result
 
 
@@ -307,9 +240,7 @@ def get_gpt_new_probabilities(current_step, prevention, user_data, model):
 
     content = response.output[1].content[0].text
     result = json.loads(content)
-    
-    if "edges" in result:
-        return result["edges"]
+
     return result
 
 #format anticip8's failure nodes
