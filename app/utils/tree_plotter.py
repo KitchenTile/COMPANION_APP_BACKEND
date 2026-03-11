@@ -16,6 +16,7 @@ class NodeEdgeInfo(BaseModel):
     node_from: str
     node_to: str
     label: str
+    mapped_raw_steps: list[int]
 
 # class Prevention(BaseModel):
 #     node_from: str
@@ -25,26 +26,9 @@ class NodeEdgeInfo(BaseModel):
 
 class Prevention(BaseModel):
     label: str
-    action_type: Literal["VOICE_ALERT", "UI_MODAL", "BACKGROUND_REROUTE"]
-    action_payload: str
+    action_text: str
+    action_voice: str
     trigger_timing: Literal["AT_STEP_START", "MID_STEP", "AT_STEP_END"]
-    
-class Preventions(BaseModel):
-    preventions: list[Prevention]
-
-class Recovery(BaseModel):
-    failure_mode: str
-    label: str
-    prevention: List[str] 
-    correction: List[str] 
-    severity: int 
-
-class JourneyStep(BaseModel):
-    node_from: str
-    node_to: str
-    label: str 
-    risks: List[Recovery]
-
 
 class NodeEdgeInfoArray(BaseModel):
     steps: List[NodeEdgeInfo]
@@ -71,7 +55,7 @@ class JourneyStepFailureAndPreventions(BaseModel):
     label: str 
     probability: float
     risks: List[JustFailures]
-    preventions: List[str]
+    preventions: List[Prevention]
 
 class GraphWithFailuresAndPreventions(BaseModel):
     steps: List[JourneyStepFailureAndPreventions]
@@ -153,13 +137,14 @@ def get_gpt_correct_graph(maps_data, model):
         For every logical segment of the trip, you must generate a "Happy Path".
 
         ### RULES FOR HAPPY PATH GENERATION:
-             1. Summarize small consecutive walking steps into a single meaningful edge (e.g., "Walk 5 mins to Station").
-             2. Keep Transit steps distinct.
-             3. Ensure the graph is continuous (the 'node_to' of step A must be the 'node_from' of step B).
-             4. Start the first node as "Start" and the last node as "Destination".
-             5. Ensure step 'node_to' and 'node_from' have meaninful names instead of index numbers or letters, if the user is about to take a bus, indicate they are going from bus stop to bus stop.
-             6. Ignore the time each step takes.
-             7. Keep to a maximum of 5 words.
+            1. Summarize small consecutive walking steps into a single meaningful edge (e.g., "Walk 5 mins to Station").
+            2. Keep Transit steps distinct.
+            3. Ensure the graph is continuous (the 'node_to' of step A must be the 'node_from' of step B).
+            4. Start the first node as "Start" and the last node as "Destination".
+            5. Ensure step 'node_to' and 'node_from' have meaninful names instead of index numbers or letters, if the user is about to take a bus, indicate they are going from bus stop to bus stop.
+            6. Ignore the time each step takes.
+            7. Keep to a maximum of 5 words.
+            8.8. For each logical edge, provide an array of integers in 'mapped_raw_steps' representing the exact Step numbers from the input text that are summarized into this edge (e.g., if you summarized Steps 1, 2, and 3, output [1, 2, 3]).
 
         ### FORMATTING:
         - Use meaningful names for nodes (e.g., "Hendon Stop" not "Stop 1").
@@ -196,6 +181,9 @@ def get_gpt_preventions(maps_data, model):
             1. Word the prevention from the application point of view (e.g., "Use voice navigation to keep user on track", "Remind user to be careful and watch path", "Use voice command to keep user on time") 
             2. Provide 1-3 short preventions (max 8 words) to avoid specific failures before they happen.
             3. If the prevention is related to arriving to a specific location earlier, phrase it as 'remind user to leave earlier' to get to the location you're referring to in time.
+            4. Provide the 'action_voice' (The exact sentence the TTS will read, will be directly spoken to the user).
+            5. Provide the 'action_text' (The text displayed in the UI, make it 8 words or less, will be directly shown to the user).
+            6. Define 'trigger_timing' (When should the app trigger this? At the start of the step, or halfway through?).
         """
     
     response = client.responses.parse(
