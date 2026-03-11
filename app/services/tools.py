@@ -7,7 +7,6 @@ from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
 from app.services.google_services.google_service_builder import GoogleServiceBuilder
 from app.services.user_manager import CredentialManager
 from app.services.google_services.gmail_service.gmail_client import GmailClient
-from app.utils.journey_planner import JourneyPlanner
 
 dotenv.load_dotenv()
 
@@ -175,9 +174,7 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
     except requests.exceptions.RequestException as e:
         return f"An error occurred: {e}"
     
-def generate_route_with_preventions(origin, destination):
-    anticip8 = Anticip8RoutePredictor()
-
+def generate_route_with_preventions(origin, destination, journey_planner):
     user_profile = {
         "identity": {
             "name": "Rosa",
@@ -235,8 +232,6 @@ def generate_route_with_preventions(origin, destination):
             "anxiety_triggers": "Fear of falling, icy sidewalks, long standing times, rushed environments, poorly lit spaces."
         },
     }
-
-    journey_planner = JourneyPlanner(tools = None, anticip8 = anticip8)
 
     journey_graph = journey_planner.calculate_route_wo_corrections(origin, destination, user_profile, "anticip8", "gpt-5")
 
