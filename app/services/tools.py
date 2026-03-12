@@ -3,6 +3,8 @@ import requests
 import dotenv
 import os
 
+from supabase import create_client
+
 from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
 from app.services.google_services.google_service_builder import GoogleServiceBuilder
 from app.services.user_manager import CredentialManager
@@ -174,64 +176,20 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
     except requests.exceptions.RequestException as e:
         return f"An error occurred: {e}"
     
-def generate_route_with_preventions(origin, destination, journey_planner):
-    user_profile = {
-        "identity": {
-            "name": "Rosa",
-            "age": 75,
-            "living_status": "Lives alone, semi-independent",
-        },
-        "clinical_context": {
-            "condition": "Early-stage Dementia",
-            "cognitive_load": "High susceptibility to 'Sundeowning' (increased confusion in late afternoon)",
-            "symptoms": [
-                "Short-term memory lapses",
-                "Spatial disorientation",
-                "Executive function decline",
-                "Sensory overstimulation"
-            ]
-        },
-        "behavioral_history": {
-            "navigation_errors": {
-                "bus_accuracy": "20% failure rate (wrong bus)",
-                "directional_logic": "50% failure rate (reversing orientation)",
-                "waypoint_memory": "10% failure rate (missing stops)"
-            },
-            "anxiety_triggers": "Crowds, loud echoes, complex transit hubs, and rushing commuters."
-        },
-    }
+def generate_route_with_preventions(origin, destination, journey_planner, user_id):
 
-    users_profile2 = {
-        "identity": {
-            "name": "Harold",
-            "age": 82,
-            "living_status": "Lives alone, receives part-time caregiver support",
-        },
-        "clinical_context": {
-            "condition": "Age-related Frailty Syndrome",
-            "physical_load": "Low physiological reserve, high fatigue after minimal exertion",
-            "symptoms": [
-                "Reduced muscle strength",
-                "Slow gait speed",
-                "Poor balance and fall risk",
-                "Low endurance",
-                "Delayed recovery after illness"
-            ]
-        },
-        "behavioral_history": {
-            "mobility_limitations": {
-                "walking_tolerance": "Needs rest after 5-10 minutes",
-                "stair_navigation": "Requires handrail, 40% difficulty without support",
-                "assistive_device_use": "Uses cane outdoors"
-            },
-            "health_vulnerabilities": {
-                "fall_history": "2 minor falls in past year",
-                "hospitalization_risk": "High risk after acute infection or dehydration",
-                "medication_sensitivity": "Increased side-effect susceptibility"
-            },
-            "anxiety_triggers": "Fear of falling, icy sidewalks, long standing times, rushed environments, poorly lit spaces."
-        },
-    }
+    supabase = create_client(
+        os.environ.get("SUPABASE_URL"),
+        os.environ.get("SUPABASE_API_KEY")
+    )
+
+    try:
+        response = supabase.table("users").select("*").eq("id", user_id).single().execute()
+    except Exception as e:
+        print(f"Error getting profile: {e}")
+
+
+    user_profile = {"identity": response.data.get("identity"), "clinical_context": response.data.get("clinical_context"), "behavioral_history": response.data.get("behavioral_history")}
 
     journey_graph = journey_planner.calculate_route_wo_corrections(origin, destination, user_profile, "anticip8", "gpt-5")
 
@@ -279,7 +237,6 @@ tool_dict = {
     "get_horoscope": get_horoscope,
     "get_base_conversion": get_base_conversion,
     "user_interaction": user_interaction,
-    "calculate_google_maps_route": calculate_google_maps_route,
     'send_email': send_email,
     "generate_route_with_preventions": generate_route_with_preventions,
     "call_uber": None,
