@@ -43,6 +43,7 @@ class JourneyStepFailure(BaseModel):
     node_from: str
     node_to: str
     label: str 
+    mapped_raw_steps: list[int]
     probability: float
     risks: List[JustFailures]
 
@@ -52,7 +53,8 @@ class GraphWithFailures(BaseModel):
 class JourneyStepFailureAndPreventions(BaseModel):
     node_from: str
     node_to: str
-    label: str 
+    label: str
+    mapped_raw_steps: list[int]
     probability: float
     risks: List[JustFailures]
     preventions: List[Prevention]
