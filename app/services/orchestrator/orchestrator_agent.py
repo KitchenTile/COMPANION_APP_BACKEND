@@ -92,6 +92,7 @@ class OrchestratorAgent(AgentBase):
                     print("IN USER ID CONDITIONAL")
                     func_args["user_id"] = self.user_id
 
+                #if tool usage requires journey planner, use self journey planner
                 if "journey_planner" in func.__code__.co_varnames:
                     print("IN JOURNEY PLANNER CONDITIONAL")
                     func_args["journey_planner"] = self.journey_planner
