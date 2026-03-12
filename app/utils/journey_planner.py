@@ -57,7 +57,7 @@ class JourneyPlanner():
             )
 
             current_context_payload = {
-                "subject": "Negative sitation's for Rosa's journey",
+                "subject": "Negative situations for user's journey",
                 "subject_profile_text": user_profile_string,
                 "recent_history_text": dynamic_history,
                 "triggers_text": dynamic_triggers
@@ -147,7 +147,7 @@ class JourneyPlanner():
                 )
 
                 current_context_payload = {
-                    "subject": "Rosa's journey probability after taking an action",
+                    "subject": "User's journey probability after taking an action",
                     "subject_profile_text": user_profile_string,
                     "recent_history_text": dynamic_history,
                     "triggers_text": dynamic_triggers
@@ -208,6 +208,7 @@ class JourneyPlanner():
         if not self.travel_steps_from_google:
             print(f"calculating travel steps from {origin} to {destination}, using {model}")
             self._get_travel_steps(origin, destination)
+            print(self.travel_steps_from_google.get("text"))
 
         print(self.travel_steps_from_google)
         # turn google maps data into graph like structure
