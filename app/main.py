@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from openai import OpenAI
 from pydantic import BaseModel, Field
 import redis
+from supabase import create_client
 from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
 from app.services.client_agent.client_agent import ClientAgent
 from app.services.orchestrator.memory import ConversationManager
@@ -106,14 +107,28 @@ ALGORITHM = "HS256"
 
 @app.post('/anticip8/demo')
 async def anticip8_demo_route(request_data: DemoRequest):
-    print(f"Route endpoint hit. Origin: {request_data.origin}, Destination: {request_data.destination}")
+    print(f"Route endpoint hit. Origin: {request_data.origin}, Destination: {request_data.destination}, user {request_data.user_id}")
     tools = list(tool_dict.keys())
 
     anticip8 = Anticip8RoutePredictor()
 
+    supabase = create_client(
+        os.environ.get("SUPABASE_URL"),
+        os.environ.get("SUPABASE_API_KEY")
+    )
+
+    try:
+        response = supabase.table("users").select("*").eq("id", request_data.user_id).single().execute()
+    except Exception as e:
+        print(f"Error getting profile: {e}")
+
+    user_profile = {"identity": response.data.get("identity"), "clinical_context": response.data.get("clinical_context"), "behavioral_history": response.data.get("behavioral_history")}
+
+    print(f"user profile: {user_profile}")
+
     journey_planner = JourneyPlanner(tools, anticip8)
 
-    journey_graph = journey_planner.calculate_route_wo_corrections(request_data.origin, request_data.destination, request_data.profile, request_data.model, request_data.probability_model)
+    journey_graph = journey_planner.calculate_route_wo_corrections(request_data.origin, request_data.destination, user_profile, request_data.model, request_data.probability_model)
 
     # journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, request_data.model)
 
