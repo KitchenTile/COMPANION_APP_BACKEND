@@ -92,7 +92,7 @@ def upload_audio_file(filename):
 
         signed_url = supabase.storage.from_("audio_files").create_signed_url(
             filename,
-            expires_in=60 * 10,
+            expires_in=600 * 10,
         )
 
         os.remove(filename)
