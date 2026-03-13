@@ -2,7 +2,11 @@ import json
 import ssl
 
 import urllib
+from uuid import uuid4
+
+from openai import OpenAI
 from app.services.tools import calculate_google_maps_route
+from app.utils.helper_funcs import upload_audio_file
 from app.utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_new_probabilities, get_gpt_preventions, gpt_formatted_nodes
 
 def get_london_weather():
@@ -28,6 +32,7 @@ class JourneyPlanner():
         self.tools = tools
         self.anticip8 = anticip8
         self.travel_steps_from_google = None
+        self.client = OpenAI()
 
     def _get_travel_steps(self, origin, destination):
         travel_steps_from_google = calculate_google_maps_route(origin, destination, ["bus"])
@@ -177,7 +182,6 @@ class JourneyPlanner():
                     "label": prevention,
                     "adjusted_probabilities": risk_impacts
                 })
-
                 
             step["preventions"] = detailed_preventions
         
@@ -196,11 +200,33 @@ class JourneyPlanner():
                     highest_success_prob = success_prob
                     best_prevention = prevention
             
-            # Strip away the array and just attach the best one to the step
+
+            # add audio response
+            filename = f"{str(uuid4())}.mp3"
+
+            with self.client.audio.speech.with_streaming_response.create(
+                        model="gpt-4o-mini-tts",
+                        voice="ballad",
+                        response_format="mp3",
+                        instructions=f"""
+                            VOICE: Calm, relaxed and calm.
+                            PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
+                            TONE: Lightweight and welcoming.
+                            DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
+                        """,
+                        input=best_prevention.get('voice_action'),
+            ) as response:
+                response.stream_to_file(filename)
+
+            audio_url = upload_audio_file(filename)
+
+            best_prevention["audio_url"] = audio_url
+
             step['best_prevention'] = best_prevention 
 
             print("Best Prevention")
             print(step["best_prevention"])
+
 
         return graph
     
