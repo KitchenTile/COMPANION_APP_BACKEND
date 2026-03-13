@@ -200,21 +200,21 @@ class JourneyPlanner():
                     highest_success_prob = success_prob
                     best_prevention = prevention
             
-
             # add audio response
             filename = f"{str(uuid4())}.mp3"
+            print(f"generating audio {filename}")
 
             with self.client.audio.speech.with_streaming_response.create(
-                        model="gpt-4o-mini-tts",
-                        voice="ballad",
-                        response_format="mp3",
-                        instructions=f"""
-                            VOICE: Calm, relaxed and calm.
-                            PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
-                            TONE: Lightweight and welcoming.
-                            DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
-                        """,
-                        input=best_prevention.get('voice_action'),
+                model="gpt-4o-mini-tts",
+                voice="ballad",
+                response_format="mp3",
+                instructions=f"""
+                    VOICE: Calm, relaxed and calm.
+                    PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
+                    TONE: Lightweight and welcoming.
+                    DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
+                """,
+                input=best_prevention.get("label").get('action_voice'),
             ) as response:
                 response.stream_to_file(filename)
 
