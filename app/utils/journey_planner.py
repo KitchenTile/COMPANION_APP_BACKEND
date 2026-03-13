@@ -2,8 +2,8 @@ import json
 import ssl
 
 import urllib
-from app.services.tools import calculate_google_maps_route
-from app.utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_new_probabilities, get_gpt_preventions, gpt_formatted_nodes
+from services.tools import calculate_google_maps_route
+from utils.tree_plotter import get_gpt_correct_graph, get_gpt_failure_nodes_general, get_gpt_new_probabilities, get_gpt_preventions, gpt_formatted_nodes
 
 def get_london_weather():
     url = "https://api.open-meteo.com/v1/forecast?latitude=51.5074&longitude=-0.1278&current=temperature_2m,precipitation&timezone=auto"
