@@ -292,7 +292,7 @@ async def get_transcript(file: UploadFile = File(...)):
 
         result = handle_user_message(chat_id="1e2d29e6-1b82-442c-ba75-311e91f090de", user_id="c8f3bee0-ae2d-4f95-9a62-ee1fe96abe82", message=transcript)
 
-        return {"status": result['response']['status'], "task_id": result["task_id"], "response_text": result["response"]['answer'], "response_audio": result['response']['audio_url'], "data": userQuery}
+        return {"status": result['response']['status'], "task_id": result["task_id"], "response_text": result["response"]['answer'], "response_audio": result.get('response').get('audio_url', None), "data": userQuery}
 
     except Exception as e:
         print(e)
@@ -306,7 +306,7 @@ async def send_message(userQuery: ChatMessageRequest):
 
         result = handle_user_message(userQuery.user_id, userQuery.chat_id, userQuery.message, userQuery.task_id, userQuery.pending_tool_id)
 
-        return {"status": result['response']['status'], "task_id": result["task_id"], "response_text": result["response"]['answer'], "response_audio": result['response']['audio_url'], "data": userQuery}
+        return {"status": result['response']['status'], "task_id": result["task_id"], "response_text": result["response"]['answer'], "response_audio": result.get('response').get('audio_url', None), "data": userQuery}
 
     except Exception as e:
         print(f"Server Error: {e}")
