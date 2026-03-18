@@ -125,7 +125,7 @@ async def anticip8_demo_route(request_data: DemoRequest, background_tasks: Backg
     return {
         "status": "processing", 
         "message": "Journey planning started. Results will be sent via WebSocket.",
-        "chat_id": response.data.chat_id
+        "chat_id": chat_id
     }
 
 async def async_route_calculation(request_data: DemoRequest, user_profile, chat_id):
