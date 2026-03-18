@@ -56,7 +56,6 @@ class DemoRequest(BaseModel):
     model: str
     probability_model: str
     user_id: str
-    chat_id: str
 
 
 #interface for the response
@@ -106,20 +105,6 @@ oauth.register(
 @app.post('/anticip8/demo')
 async def anticip8_demo_route(request_data: DemoRequest, background_tasks: BackgroundTasks):
     print(f"Route endpoint hit. Starting background task for user {request_data.user_id}")
-    
-    background_tasks.add_task(async_route_calculation, request_data)
-
-    return {
-        "status": "processing", 
-        "message": "Journey planning started. Results will be sent via WebSocket.",
-        "chat_id": request_data.chat_id
-    }
-
-async def async_route_calculation(request_data: DemoRequest):
-    print(f"Route endpoint hit. Origin: {request_data.origin}, Destination: {request_data.destination}, user {request_data.user_id}")
-    tools = list(tool_dict.keys())
-
-    anticip8 = Anticip8RoutePredictor()
 
     supabase = create_client(
         os.environ.get("SUPABASE_URL"),
@@ -132,6 +117,22 @@ async def async_route_calculation(request_data: DemoRequest):
         print(f"Error getting profile: {e}")
 
     user_profile = {"identity": response.data.get("identity"), "clinical_context": response.data.get("clinical_context"), "behavioral_history": response.data.get("behavioral_history")}
+
+    chat_id = response.data.get("chat_id")
+    
+    background_tasks.add_task(async_route_calculation, request_data, user_profile, chat_id)
+
+    return {
+        "status": "processing", 
+        "message": "Journey planning started. Results will be sent via WebSocket.",
+        "chat_id": response.data.chat_id
+    }
+
+async def async_route_calculation(request_data: DemoRequest, user_profile, chat_id):
+    print(f"Route endpoint hit. Origin: {request_data.origin}, Destination: {request_data.destination}, user {request_data.user_id}")
+    tools = list(tool_dict.keys())
+
+    anticip8 = Anticip8RoutePredictor()
 
     print(f"user profile: {user_profile}")
 
@@ -149,11 +150,11 @@ async def async_route_calculation(request_data: DemoRequest):
     }
 
     await websocket_manager.send_message(
-        chat_id=request_data.chat_id, 
+        chat_id=chat_id, 
         message=json.dumps(ws_payload)
     )
     
-    print(f"Background task completed and sent to {request_data.chat_id}")
+    print(f"Background task completed and sent to {chat_id}")
 
 
 @app.get('/gmailLogin')
