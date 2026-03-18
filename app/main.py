@@ -145,7 +145,7 @@ async def async_route_calculation(request_data: DemoRequest):
 
     ws_payload = {
         "type": "ANTICIP8_RESULT",
-        "data": journey_graph
+        "graph": journey_graph
     }
 
     await websocket_manager.send_message(
