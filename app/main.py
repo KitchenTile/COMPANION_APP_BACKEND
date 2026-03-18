@@ -56,6 +56,7 @@ class DemoRequest(BaseModel):
     model: str
     probability_model: str
     user_id: str
+    chat_id: str
 
 
 #interface for the response
@@ -102,12 +103,19 @@ oauth.register(
     },
 )
 
-# JWT Configurations
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-ALGORITHM = "HS256"
-
 @app.post('/anticip8/demo')
-async def anticip8_demo_route(request_data: DemoRequest):
+async def anticip8_demo_route(request_data: DemoRequest, background_tasks: BackgroundTasks):
+    print(f"Route endpoint hit. Starting background task for user {request_data.user_id}")
+    
+    background_tasks.add_task(async_route_calculation, request_data)
+
+    return {
+        "status": "processing", 
+        "message": "Journey planning started. Results will be sent via WebSocket.",
+        "chat_id": request_data.chat_id
+    }
+
+async def async_route_calculation(request_data: DemoRequest):
     print(f"Route endpoint hit. Origin: {request_data.origin}, Destination: {request_data.destination}, user {request_data.user_id}")
     tools = list(tool_dict.keys())
 
@@ -134,8 +142,18 @@ async def anticip8_demo_route(request_data: DemoRequest):
     # journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, request_data.model)
 
     print(journey_planner)
-    return journey_graph
 
+    ws_payload = {
+        "type": "ANTICIP8_RESULT",
+        "data": journey_graph
+    }
+
+    await websocket_manager.send_message(
+        chat_id=request_data.chat_id, 
+        message=json.dumps(ws_payload)
+    )
+    
+    print(f"Background task completed and sent to {request_data.chat_id}")
 
 
 @app.get('/gmailLogin')
