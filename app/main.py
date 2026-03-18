@@ -55,6 +55,7 @@ class DemoRequest(BaseModel):
     destination: str
     model: str
     probability_model: str
+    user_id: str
 
 
 #interface for the response
