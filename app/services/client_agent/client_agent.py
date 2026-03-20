@@ -100,12 +100,7 @@ class ClientAgent(AgentBase):
                     model="gpt-4o-mini-tts",
                     voice="ballad",
                     response_format="mp3",
-                    instructions=f"""
-                        VOICE: Calm, relaxed and calm.
-                        PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
-                        TONE: Lightweight and welcoming.
-                        DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
-                    """,
+                    instructions=prompt_dict["voice_prompt"],
                     input=final_response,
         ) as response:
             response.stream_to_file(filename)
