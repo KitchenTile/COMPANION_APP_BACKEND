@@ -9,6 +9,7 @@ from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
 from app.services.google_services.google_service_builder import GoogleServiceBuilder
 from app.services.user_manager import CredentialManager
 from app.services.google_services.gmail_service.gmail_client import GmailClient
+from app.utils.helper_funcs import manage_db_journey
 
 dotenv.load_dotenv()
 
@@ -176,7 +177,7 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
     except requests.exceptions.RequestException as e:
         return f"An error occurred: {e}"
     
-def generate_route_with_preventions(origin, destination, journey_planner, user_id):
+def generate_route_with_preventions(origin, destination, journey_planner, user_id, task_id = None):
 
     supabase = create_client(
         os.environ.get("SUPABASE_URL"),
@@ -188,6 +189,8 @@ def generate_route_with_preventions(origin, destination, journey_planner, user_i
     except Exception as e:
         print(f"Error getting profile: {e}")
 
+    if task_id != None:
+        manage_db_journey(user_id=user_id, trip_id=task_id, origin=origin, destination=destination)
 
     user_profile = {"identity": response.data.get("identity"), "clinical_context": response.data.get("clinical_context"), "behavioral_history": response.data.get("behavioral_history")}
 
