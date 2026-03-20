@@ -102,3 +102,39 @@ def upload_audio_file(filename):
 
     except Exception as e:
         print(f"Error uploading audio to supabase: {e}")
+
+
+
+def manage_db_journey(user_id, trip_id, origin = None, destination = None):
+    supabase = create_client(
+        os.environ.get("SUPABASE_URL"),
+        os.environ.get("SUPABASE_API_KEY")
+    )
+    # check if there's a trip
+    trip_exists = (
+            supabase.table("trip_history")
+            .select("*")
+            .eq("id", trip_id)
+            .execute()
+    )
+    #if there is no current trip create one
+    if len(trip_exists.data) == 0:  
+        try:
+            response = supabase.table("trip_history").insert({"id": trip_id, "user_id": user_id}).execute()
+
+            print(response)
+
+        except Exception as e:
+            return f"Error creating trip - {e}"
+        
+    #if user is lost, add 1 to the lost count
+    else:
+        try:
+            current_count = supabase.table("trip_history").select("recalculation_count").eq("id", trip_id).execute()
+
+            count_plus_one = current_count.data[0].get("recalculation_count") + 1
+            response = supabase.table("trip_history").update({"recalculation_count": count_plus_one}).eq("id", trip_id).execute()
+
+
+        except Exception as e:
+            return f"Error updating fail count - {e}"
