@@ -4,6 +4,8 @@ from uuid import uuid4
 from app.services.agent_base import AgentBase
 from app.services.orchestrator.memory import ConversationManager
 from app.utils.helper_funcs import upload_audio_file
+from app.services.prompts.prompts import prompt_dict
+
 
 class OrchestratorAgent(AgentBase):
     def __init__(self, name:str, client: Any, tool_definitions: list[Dict], tool_dict: Dict[str, callable], prompt: str, chat_id: str, user_id: str, journey_planner: Any):
@@ -146,12 +148,7 @@ class OrchestratorAgent(AgentBase):
                                     model="gpt-4o-mini-tts",
                                     voice="ballad",
                                     response_format="mp3",
-                                    instructions=f"""
-                                        VOICE: Calm, relaxed and calm.
-                                        PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
-                                        TONE: Lightweight and welcoming.
-                                        DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
-                                    """,
+                                    instructions=prompt_dict["voice_prompt"],
                                     input=result['question'],
                         ) as response:
                             response.stream_to_file(filename)
@@ -173,7 +170,7 @@ class OrchestratorAgent(AgentBase):
 
                         return user_reply
                     
-                    # check if tool returned a Route Object
+                    # -- check if tool returned a Route Object --
                     if isinstance(result, dict) and result.get('action') == "display_route":
 
                         #  inform the user AND send the polyline                                                    
@@ -186,12 +183,7 @@ class OrchestratorAgent(AgentBase):
                                     model="gpt-4o-mini-tts",
                                     voice="ballad",
                                     response_format="mp3",
-                                    instructions=f"""
-                                        VOICE: Calm, relaxed and calm.
-                                        PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
-                                        TONE: Lightweight and welcoming.
-                                        DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
-                                    """,
+                                    instructions=prompt_dict["voice_prompt"],
                                     input=result['text'],
                         ) as response:
                             response.stream_to_file(filename)
@@ -204,7 +196,7 @@ class OrchestratorAgent(AgentBase):
                             step_type="tool_result",
                             payload={"tool_call_id": tool_call.id, "content": result['text']}
                         )
-                        
+
                         #return the structured packet to the frontend
                         return {
                             "performative": "INFORM",
@@ -244,12 +236,7 @@ class OrchestratorAgent(AgentBase):
                             model="gpt-4o-mini-tts",
                             voice="ballad",
                             response_format="mp3",
-                            instructions=f"""
-                                VOICE: Calm, relaxed and calm.
-                                PUNCTUATION: Light and natural, with gentle pauses to create a conversational rhythm.
-                                TONE: Lightweight and welcoming.
-                                DELIVERY: Smooth and easygoing, like speaking to an elderly user. 
-                            """,
+                            instructions=prompt_dict["voice_prompt"],
                             input=final_content,
                 ) as response:
                     response.stream_to_file(filename)
