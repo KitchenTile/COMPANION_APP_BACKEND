@@ -179,6 +179,9 @@ def calculate_google_maps_route(origin: str, destination: str, transport_mode: l
     
 def generate_route_with_preventions(origin, destination, journey_planner, user_id, task_id = None):
 
+    print("printing origin and desstination")
+    print(origin, destination)
+
     supabase = create_client(
         os.environ.get("SUPABASE_URL"),
         os.environ.get("SUPABASE_API_KEY")
