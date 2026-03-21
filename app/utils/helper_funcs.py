@@ -119,10 +119,11 @@ def manage_db_journey(user_id, trip_id, origin = None, destination = None):
             .eq("id", trip_id)
             .execute()
     )
+
     #if there is no current trip create one
     if len(trip_exists.data) == 0:  
         try:
-            response = supabase.table("trip_history").insert({"id": trip_id, "user_id": user_id, "origin": origin, "desstination": destination}).execute()
+            response = supabase.table("trip_history").insert({"id": trip_id, "user_id": user_id, "origin": origin, "destination": destination}).execute()
 
             print(response)
 
