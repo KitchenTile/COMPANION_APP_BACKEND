@@ -107,7 +107,7 @@ def upload_audio_file(filename):
 
 def manage_db_journey(user_id, trip_id, origin = None, destination = None):
     print("printing in db function")
-    print(user_id, destination, origin, destination)
+    print(user_id, trip_id, origin, destination)
     supabase = create_client(
         os.environ.get("SUPABASE_URL"),
         os.environ.get("SUPABASE_API_KEY")
