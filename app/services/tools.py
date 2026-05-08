@@ -14,22 +14,6 @@ from app.utils.helper_funcs import manage_db_journey
 dotenv.load_dotenv()
 
 #tool def
-def get_base_conversion(number:int, target_base: int, starting_base: int|None=10):
-    headers = {
-        'accept': 'application/json'
-    }
-    try:
-        response = requests.get(f"https://api.math.tools/numbers/base?number={number}&from={starting_base}&to={target_base}", headers=headers)
-
-        response.raise_for_status()
-        data = response.json()
-        
-        return data['contents'];
-
-    except requests.exceptions.RequestException as e:
-        return f"An error occurred: {e}"
-
-#tool def
 def user_interaction(query: str):
     return {"action": "ask_user", "question": query}
 
@@ -220,7 +204,6 @@ def send_email(user_id: str, to: str, subject: str, body: str, thread_id: str):
 
 
 tool_dict = {
-    "get_base_conversion": get_base_conversion,
     "user_interaction": user_interaction,
     'send_email': send_email,
     "generate_route_with_preventions": generate_route_with_preventions,
@@ -230,33 +213,6 @@ tool_dict = {
 
 #tools available for the model
 tool_definitions = [
-    {
-        "type": "function",
-        "function":{
-        "name": "get_base_conversion",
-        "description": "Given a number, a starting base (optional) and a target base, convert that number into the desired base.",
-        "strict": True,
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "number": {
-                    "type": "integer",
-                    "description": "The number to be converted",
-                },
-                "target_base": {
-                    "type": "integer",
-                    "description": "The desired base to convert the number to",
-                },
-                "starting_base": {              
-                    "type": ["integer", "null"],
-                    "description": "The base the number is originally in",
-                },
-            },
-            "required": ["number", "target_base", "starting_base"],
-            "additionalProperties": False
-        },
-        }
-    },
     {
         "type": "function",
         "function":{
