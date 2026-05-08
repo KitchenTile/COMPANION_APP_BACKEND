@@ -5,33 +5,13 @@ import os
 
 from supabase import create_client
 
-from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
+from app.services.anticip8.anticip8_manager import Anticip8RoutePredictor
 from app.services.google_services.google_service_builder import GoogleServiceBuilder
 from app.services.user_manager import CredentialManager
 from app.services.google_services.gmail_service.gmail_client import GmailClient
 from app.utils.helper_funcs import manage_db_journey
 
 dotenv.load_dotenv()
-
-
-#tool def
-def get_horoscope(sign: str, day: str):
-    headers = {
-        'accept': 'application/json'
-    }
-    try:
-        if day == "today" or day == "tomorrow" or day == "yesterday":
-            response = requests.get(f"https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign={sign}&day={day}", headers=headers)
-        else:
-            response = requests.get(f"https://horoscope-app-api.vercel.app/api/v1/get-horoscope/{day}?sign={sign}", headers=headers)
-
-
-        response.raise_for_status() 
-        data = response.json()
-        return data['data']
-
-    except requests.exceptions.RequestException as e:
-        return f"An error occurred: {e}"
 
 #tool def
 def get_base_conversion(number:int, target_base: int, starting_base: int|None=10):
@@ -240,7 +220,6 @@ def send_email(user_id: str, to: str, subject: str, body: str, thread_id: str):
 
 
 tool_dict = {
-    "get_horoscope": get_horoscope,
     "get_base_conversion": get_base_conversion,
     "user_interaction": user_interaction,
     'send_email': send_email,
@@ -251,29 +230,6 @@ tool_dict = {
 
 #tools available for the model
 tool_definitions = [
-    {
-        "type": "function",
-        "function":{
-        "name": "get_horoscope",
-        "description": "Get horoscope for an astrological and specific time.",
-        "strict": True,
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "sign": {
-                    "type": "string",
-                    "description": "An astrological sign like Taurus or Aquarius",
-                },
-                "day": {
-                    "type": "string",
-                    "description": "When do we want the horoscope information from",
-                },
-            },
-            "required": ["sign", "day"],
-            "additionalProperties": False
-        },
-        }
-    },
     {
         "type": "function",
         "function":{

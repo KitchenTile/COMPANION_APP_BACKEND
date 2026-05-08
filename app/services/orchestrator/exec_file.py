@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import redis
 
-from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
+from app.services.anticip8.anticip8_manager import Anticip8RoutePredictor
 from app.services.orchestrator.orchestrator_agent import OrchestratorAgent
 from app.services.tools import tool_definitions, tool_dict
 from app.services.prompts.prompts import prompt_dict
