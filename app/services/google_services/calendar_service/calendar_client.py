@@ -17,8 +17,6 @@ class CalendarClient(BaseGoogleClient):
                 body=event_obj
             ).execute()
 
-            print(event)
-
         except Exception as e:
             print(e)
     
@@ -35,8 +33,6 @@ class CalendarClient(BaseGoogleClient):
                 orderBy="startTime",
                 timeMin= datetime.now(timezone.utc).isoformat()
             ).execute()
-
-            print(events)
 
             return events.get("items", [])
 
@@ -57,7 +53,6 @@ class CalendarClient(BaseGoogleClient):
         try:
             event_freebusy = service.freebusy().query(body=body).execute()
 
-            print(event_freebusy)
 
             if len(event_freebusy['calendars']['primary']['busy']) == 0:
                 return True
@@ -65,14 +60,12 @@ class CalendarClient(BaseGoogleClient):
                 return False
             
         except Exception as e:
-            print(" --- event freebusy error --- ")
             print(e)
 
 
     def get_event_by_thread_id(self, thread_id: str):
         #create service
         service = self._get_service()
-        print("get_event_by_thread_id")
         # get event from event id
         try:
             events = (
@@ -84,7 +77,6 @@ class CalendarClient(BaseGoogleClient):
                 .execute()
             )
 
-            print(events)
             #change return statement to get the item from the event
             return events.get("items")[0].get("id")
         
@@ -102,8 +94,6 @@ class CalendarClient(BaseGoogleClient):
                 eventId=event_id,
                 body=edit_obj
             ).execute()
-
-            print(edited_event)
 
             return edited_event
 

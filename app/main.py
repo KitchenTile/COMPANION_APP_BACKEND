@@ -13,7 +13,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 import redis
 from supabase import create_client
-from app.services.anticip8.anticip8_test import Anticip8RoutePredictor
+from app.services.anticip8.anticip8_manager import Anticip8RoutePredictor
 from app.services.client_agent.client_agent import ClientAgent
 from app.services.orchestrator.memory import ConversationManager
 from app.services.user_manager import CredentialManager
@@ -139,8 +139,6 @@ async def async_route_calculation(request_data: DemoRequest, user_profile, chat_
     journey_planner = JourneyPlanner(tools, anticip8)
 
     journey_graph = journey_planner.calculate_route_wo_corrections(request_data.origin, request_data.destination, user_profile, request_data.model, request_data.probability_model)
-
-    # journey_graph = journey_planner.calculate_route(request_data.origin, request_data.destination, request_data.model)
 
     print(journey_planner)
 

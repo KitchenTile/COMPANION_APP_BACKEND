@@ -93,9 +93,8 @@ class JourneyPlanner():
         
         return correct_graph_path
 
-
+    # caluclate how the robability changes with each prevention - GPT
     def calculate_new_probability(self, graph, user_profile):
-        # caluclate how the robability changes with each prevention
         for step in graph.get("steps"):
             detailed_preventions = []
 
@@ -127,6 +126,7 @@ class JourneyPlanner():
         return graph
     
 
+    # caluclate how the robability changes with each prevention - Anticip8
     def anticip8_calculate_new_probability(self, correct_graph_path, user_profile):
         for index, step in enumerate(correct_graph_path.get("steps")):
             detailed_preventions = []
@@ -230,6 +230,7 @@ class JourneyPlanner():
 
         return graph
     
+    # main journey generation pipeline function
     def calculate_route_wo_corrections(self, origin, destination, user_profile, model, probability_model):
         if not self.travel_steps_from_google:
             print(f"calculating travel steps from {origin} to {destination}, using {model}")

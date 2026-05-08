@@ -56,7 +56,6 @@ class Anticip8RoutePredictor:
 
     def generate_context(self, context_payload):
         ctx_resp = self._post_with_backoff(f"{BASE_URL}/context/", context_payload)
-        # ctx_resp = requests.post(f"{BASE_URL}/context/", headers=HEADERS, json=context_payload)
         return ctx_resp.get('id')
 
     def rank_step_options(self, context_id, ranking_options, option_type):

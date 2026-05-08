@@ -112,7 +112,6 @@ class GmailClient(BaseGoogleClient):
                     "body": body.get("body"),
                 }
 
-
                 emails.append(single_email_obj)
 
             return emails

@@ -3,28 +3,19 @@ import uuid
 from supabase import Client, create_client
 from sentence_transformers import SentenceTransformer
 
-# class email(BaseModel):
-#     id: str
-#     headers: dict[str, Any]
-#     body: str
 
 class EmailChunker:
     def __init__(self, user_id: str, chunk_size: int = 500):
         self.user_id = user_id
         self.chunk_size = chunk_size
 
-
     def chunk_emails(self, emails):
-
         #chunk and add email bodies to array
         for email in emails:
             email_body = email.get("body")
             chunked_email_body = self._recursive_chunker(email_body)
 
             email["body"] = chunked_email_body
-            # print(len(chunked_email_body))
-            # print("new email")
-            # print(email)
 
         return emails
 
@@ -156,8 +147,6 @@ class EmailUpserter:
             return set()
         try:
             response = self.client.table("emails").select('id').in_("id", email_ids).execute()
-
-            print(response)
             
             return {row['id'] for row in response.data}
         

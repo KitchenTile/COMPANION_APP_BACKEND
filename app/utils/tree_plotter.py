@@ -18,11 +18,6 @@ class NodeEdgeInfo(BaseModel):
     label: str
     mapped_raw_steps: list[int]
 
-# class Prevention(BaseModel):
-#     node_from: str
-#     node_to: str
-#     label: str
-#     itervetion: str
 
 class Prevention(BaseModel):
     label: str

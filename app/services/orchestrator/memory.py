@@ -117,7 +117,6 @@ class ConversationManager:
 
         # if there is a row for the user
         if response.data != []:
-            print(response)
             try:
                 new_coords_obj = {
                         "lost_coords": lost_coords,

@@ -2,7 +2,6 @@ import base64
 from http import client
 import json
 import os
-import uuid
 
 from openai import OpenAI
 from supabase import create_client

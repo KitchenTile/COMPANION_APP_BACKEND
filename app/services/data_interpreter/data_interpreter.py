@@ -73,15 +73,13 @@ class EmailIngestionPipeline:
 
     
     def run(self):
+        # Get emails, filter the unseen emails that are appoitnment related
+
         #get email_ids
         email_ids = self.gmail_service.get_email_ids()
 
         #filter the duplicated ids
         duplicate_email_ids = self.email_upserter.filter_email_ids(email_ids)
-
-        print("duplicate email ids")
-        print(duplicate_email_ids)
-
         
         if not duplicate_email_ids:
             new_email_ids = email_ids
@@ -157,20 +155,14 @@ class EmailIngestionPipeline:
 
         response_dump = response_model.model_dump()
 
-        print(response_dump)
-
         appointment_emails = []
         # add appointment details to the emails about appointments and pop the ones that are not
         for email in emails:
             for response in response_dump.get("filtered_list"):
                 if email.get("id") == response.get("id"):
                     email["appointment_details"] = response
-                    print(email)
                     appointment_emails.append(email)
                     break
-
-        print("final emails with appointment info")
-        print(appointment_emails)
 
         return appointment_emails
     
@@ -206,8 +198,6 @@ class CalendarEventManager:
         
     #go through appointment list and decide what to do based on intent
     def manage_calendar_events(self, appointments):
-        print("in manage calendar")
-        print(appointments)
         for appointment in appointments:
             appointment_thread_id = appointment.get("headers").get("thread_id")
             appointment_start_time = appointment.get("appointment_details").get("date_time_start")
@@ -229,8 +219,6 @@ class CalendarEventManager:
 
 
     def _create_new_appointment_event(self, appointment, appointment_start_time, appointment_end_time, appointment_summary, appointment_thread_id):
-        print("NEW APPOINTMENT")
-
         # check for conflicting events with get_all_events
         is_free = self.google_calendar_client.check_freebusy(appointment_start_time, appointment_end_time)
 
@@ -254,7 +242,6 @@ class CalendarEventManager:
 
         else:
             #if user is not free, we need to ask our agent to ask user if they want to send an email to reschedule
-            # print(f"sending task to {packet.get('receiver')}")
             chat_id = get_chat_id(self.user_id)
             packet = {
                 "performative": "INFORM",
@@ -288,8 +275,6 @@ class CalendarEventManager:
 
     def _reschedule_appointment(self, appointment_summary, appointment_start_time, appointment_end_time, appointment_thread_id):
         #get event id with get_event_by_thread_id(thread_id) and edit it with edit_event(event_id, edit_obj)
-        print("RESCHEDULE APPOINTMENT")
-
         event_id_to_edit = self.google_calendar_client.get_event_by_thread_id(appointment_thread_id)
 
         event_obj = {
@@ -308,11 +293,8 @@ class CalendarEventManager:
 
 
     def _cancel_appointment(self, appointment_thread_id: str):
-        print("CANCEL APPOINTMENT")
         # get event id with get_event_by_thread_id(event_id) and cancel it with cancel_event(event_id)
         event_id_to_cancel = self.google_calendar_client.get_event_by_thread_id(appointment_thread_id)
-
-        print(event_id_to_cancel)
         self.google_calendar_client.delete_event(event_id_to_cancel)
 
         return "Appointment cancelled"
