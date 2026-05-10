@@ -25,7 +25,8 @@ The integration is primarily isolated within the following backend files:
 
 - **Purpose:** Initializes the prediction context with the user's clinical/behavioral profile and current travel step.
 - **Where it is used:** `journey_planner.py`
-- **Trigger Functions:** \* `anticip8_graph_with_failures()`
+- **Trigger Functions:**
+  - `anticip8_graph_with_failures()`
   - `anticip8_calculate_new_probability()`
 - **Payload Construction:** Before making anticipation calls, the `JourneyPlanner` constructs the context payload using the user's Supabase profile data (`subject_profile_text`), the specific travel node data (`recent_history_text`), and dynamically injected previous events (`triggers_text`).
 
