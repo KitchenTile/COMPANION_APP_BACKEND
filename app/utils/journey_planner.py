@@ -77,8 +77,6 @@ class JourneyPlanner():
 
             anticip8_failures = self.anticip8.anticip8_call(context_id, anticipation_list=[step['label']], anticip8_gen_number = 4)
 
-            print(anticip8_failures)
-
             anticip8_failure_modes = []
             for index, risk in enumerate(anticip8_failures):
                 if risk.get("action") != step['label']:

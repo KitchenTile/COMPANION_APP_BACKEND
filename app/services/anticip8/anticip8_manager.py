@@ -62,54 +62,8 @@ class Anticip8RoutePredictor:
     def generate_context(self, context_payload):
         ctx_resp = self._post_with_backoff(f"{BASE_URL}/context/", context_payload)
         return ctx_resp.get('id')
-
-    def rank_step_options(self, context_id, ranking_options, option_type):
-        if not context_id:
-            return "Error: No Context ID"
-
-        pred_payload = {
-            "context": context_id, 
-            "topn_anticip8_gen_actions": 1,
-            "anticipations_list": ranking_options
-        }
-
-        try:
-            # response = requests.post(f"{BASE_URL}/anticipation/", headers=HEADERS, json=pred_payload).json()
-            response = self._post_with_backoff(f"{BASE_URL}/anticipation/", pred_payload)
-
-            print("response")
-            print(response)
-
-            print(f"anticipations_list: {response.get('anticipations_list')}")
-
-            # Get the top-ranked item
-            ranked_items = response.get('ranked_anticipations', [])
-
-            if not ranked_items:
-                return None
-            
-            for anticipation in ranked_items:
-                print(f"""
-                    anticipation: {anticipation.get("action")}
-                    probability: {anticipation.get("probability")}
-                """)
-                
-            top_choice = ranked_items[0]
-            print(f"Anticip8 selected top {option_type}: {top_choice['action']} (Prob: {top_choice['probability']})")
-
-            # # if the top item is created by anticip8, choose the top provided one
-            if top_choice['source'] != "Anticip8":
-                return top_choice['action']
-            else:
-                first_own_action = ranked_items[1]['action']
-                print(first_own_action)
-                return first_own_action
-        
-        except Exception as e:
-            print(f"Error ranking options: {e}")
-            return None
     
-    
+    # base function for anticip8 prediction calls - used in journey_planner.py
     def anticip8_call(self, context_id, anticipation_list = [], anticip8_gen_number = 1):
         if not context_id:
             return "Error: No Context ID"
