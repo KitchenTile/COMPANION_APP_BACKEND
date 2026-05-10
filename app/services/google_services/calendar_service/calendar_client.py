@@ -1,3 +1,8 @@
+# SafeStep
+# Copyright (c) 2026 Azul P Debenedetti and Middlesex University.
+# Exclusive commercial license held by Fountech AI Limited.
+# See LICENSE.txt for terms.
+
 from app.services.google_services.google_base_client import BaseGoogleClient
 from datetime import datetime, timezone
 

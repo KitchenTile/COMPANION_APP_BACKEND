@@ -1,0 +1,61 @@
+SafeSteps Software License
+
+ 
+
+Copyright (c) 2026 Azul P Debenedetti and Middlesex University. All rights reserved, except as licensed below.
+
+ 
+
+1. Commercial License. Fountech AI Limited (incorporated in Cyprus) holds an exclusive, perpetual, worldwide commercial license to use, modify, distribute, sublicense, and integrate this software in commercial products and services, per the agreement between Fountech AI Limited and the copyright holders.
+
+ 
+
+2. Public Viewing and Academic Use. The source code may be viewed, studied, and forked for academic and research purposes with attribution.
+
+ 
+
+3. Non-Commercial Use. Non-commercial use, including research, education, and personal study, is permitted with attribution. Redistributions must retain this license in full.
+
+ 
+
+4. Third-Party Commercial Use. Commercial use by any third party requires the prior written consent of Fountech AI Limited. Commercial use includes incorporation into products, services, or offerings sold or licensed for commercial benefit.
+
+ 
+
+5. No Warranty. The software is provided "as is", without warranty of any kind, express or implied.
+
+ 
+
+For commercial licensing inquiries, contact Fountech AI Limited.
+
+ 
+
+---
+
+ 
+
+Source-file header (first draft, adapt syntax per language)
+
+ 
+
+Python / shell:
+
+# SafeSteps
+
+# Copyright (c) 2026 Azul P Debenedetti and Middlesex University.
+
+# Exclusive commercial license held by Fountech AI Limited.
+
+# See LICENSE.txt for terms.
+
+ 
+
+TypeScript / JavaScript / C-family:
+
+// SafeSteps
+
+// Copyright (c) 2026 Azul P Debenedetti and Middlesex University.
+
+// Exclusive commercial license held by Fountech AI Limited.
+
+// See LICENSE.txt for terms.

@@ -1,5 +1,9 @@
-from abc import ABC, abstractmethod
+# SafeStep
+# Copyright (c) 2026 Azul P Debenedetti and Middlesex University.
+# Exclusive commercial license held by Fountech AI Limited.
+# See LICENSE.txt for terms.
 
+from abc import ABC, abstractmethod
 
 class BaseGoogleClient(ABC):
     def __init__(self, user_id: str, credential_manager, service, scopes):

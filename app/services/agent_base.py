@@ -1,4 +1,7 @@
-
+# SafeStep
+# Copyright (c) 2026 Azul P Debenedetti and Middlesex University.
+# Exclusive commercial license held by Fountech AI Limited.
+# See LICENSE.txt for terms.
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict

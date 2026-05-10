@@ -1,3 +1,8 @@
+# SafeStep
+# Copyright (c) 2026 Azul P Debenedetti and Middlesex University.
+# Exclusive commercial license held by Fountech AI Limited.
+# See LICENSE.txt for terms.
+
 from typing import List, Literal
 from dotenv import load_dotenv
 import networkx as nx
